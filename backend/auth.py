@@ -1,13 +1,24 @@
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 import models
 
-SECRET_KEY = "KALDIRILDI-ESKI-ANAHTAR"
-ALGORITHM = "HS256"
-TOKEN_SURESI_DAKIKA = 480  # 8 saat
+load_dotenv(Path(__file__).parent / ".env")
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY tanimli degil. backend/.env dosyasi olusturun "
+        "(ornek icin backend/.env.example dosyasina bakin)."
+    )
+
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+TOKEN_SURESI_DAKIKA = int(os.getenv("TOKEN_SURESI_DAKIKA", "480"))  # 8 saat
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

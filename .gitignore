@@ -13,6 +13,7 @@ env/
 # Ortam değişkenleri
 .env
 .env.*
+!.env.example
 
 # Node
 node_modules/
