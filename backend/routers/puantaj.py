@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici
+from routers.auth import aktif_kullanici, yonetici_yetkisi
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/puantaj", tags=["Puantaj"])
@@ -100,6 +100,74 @@ def aylik_puantaj(
     }
 
 
+@router.get("/cetvel")
+def aylik_cetvel(
+    yil: int = Query(...),
+    ay: int = Query(..., ge=1, le=12),
+    departman_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Tüm personelin aylık puantaj cetveli (personel × gün matrisi).
+
+    Kayıt bulunmayan günler için durum None döner; hafta sonları
+    ayrıca işaretlenir ki arayüz onları girişe kapatabilsin.
+    """
+    gun_sayisi = calendar.monthrange(yil, ay)[1]
+    baslangic = date(yil, ay, 1)
+    bitis = date(yil, ay, gun_sayisi)
+
+    q = db.query(models.Personel).filter(
+        models.Personel.durum != models.PersonelDurum.pasif
+    )
+    if departman_id:
+        q = q.filter(models.Personel.departman_id == departman_id)
+    personeller = q.order_by(models.Personel.ad, models.Personel.soyad).all()
+
+    # Tüm kayıtlar tek sorguda: personel sayısı kadar sorgu atmayalım
+    kayitlar = db.query(models.Puantaj).filter(
+        models.Puantaj.tarih >= baslangic,
+        models.Puantaj.tarih <= bitis,
+    ).all()
+
+    kayit_map: dict = {}
+    for k in kayitlar:
+        kayit_map.setdefault(k.personel_id, {})[k.tarih.day] = k
+
+    gunler = [
+        {"gun": g, "hafta_sonu": date(yil, ay, g).weekday() >= 5}
+        for g in range(1, gun_sayisi + 1)
+    ]
+
+    satirlar = []
+    for p in personeller:
+        kendi = kayit_map.get(p.id, {})
+        hucreler = {}
+        for g in range(1, gun_sayisi + 1):
+            k = kendi.get(g)
+            hucreler[str(g)] = {
+                "id": k.id if k else None,
+                "durum": k.durum if k else None,
+                "fazla_mesai": float(k.fazla_mesai) if k and k.fazla_mesai else 0,
+            }
+        durumlar = [h["durum"] for h in hucreler.values()]
+        satirlar.append({
+            "personel_id": p.id,
+            "ad_soyad": f"{p.ad} {p.soyad}",
+            "departman": p.departman.ad if p.departman else None,
+            "gunler": hucreler,
+            "calisilan": sum(1 for d in durumlar if d in (models.PuantajDurum.tam, models.PuantajDurum.yarim)),
+            "devamsiz": sum(1 for d in durumlar if d == models.PuantajDurum.devamsiz),
+            "izinli": sum(1 for d in durumlar if d == models.PuantajDurum.izinli),
+            "fazla_mesai": sum(h["fazla_mesai"] for h in hucreler.values()),
+        })
+
+    return {
+        "yil": yil, "ay": ay, "gun_sayisi": gun_sayisi,
+        "gunler": gunler, "personeller": satirlar,
+    }
+
+
 @router.post("", status_code=201)
 def puantaj_kaydet(
     veri: PuantajKayit,
@@ -137,3 +205,17 @@ def puantaj_guncelle(
         setattr(k, alan, deger)
     db.commit(); db.refresh(k)
     return kayit_dict(k)
+
+
+@router.delete("/{kid}", status_code=204)
+def puantaj_sil(
+    kid: int,
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Bir günün puantaj kaydını siler; gün "kayıt yok" durumuna döner."""
+    k = db.query(models.Puantaj).filter(models.Puantaj.id == kid).first()
+    if not k:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    db.delete(k)
+    db.commit()

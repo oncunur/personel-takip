@@ -624,21 +624,89 @@ html, body {
 }
 
 /* ── Puantaj Modülü ──────────────────────────────────────────────── */
-.pt-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; justify-content:space-between; }
-.pt-nav { display:flex; align-items:center; gap:6px; }
-.pt-nav-btn { width:28px; height:28px; border:1.5px solid var(--gray-200); background:white; border-radius:6px; cursor:pointer; font-size:16px; color:var(--gray-600); display:flex; align-items:center; justify-content:center; transition:background .12s; }
-.pt-nav-btn:hover { background:var(--gray-100); }
-.pt-donem { font-size:13px; font-weight:700; color:var(--gray-800); min-width:120px; text-align:center; }
-.pt-ozet-kart { background:white; border-radius:var(--radius); padding:10px 12px; border:1px solid var(--gray-100); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:3px; }
+/* Aylık cetvel: satırlar personel, sütunlar ayın günleri. Sol ad
+   sütunu sabit kalır, gün sütunları yatay kayar. */
+.pt-nav { display:flex; align-items:center; gap:var(--sp-xs); }
+.pt-nav-btn {
+  width:26px; height:26px;
+  border:2px solid var(--primary); background:transparent;
+  border-radius:var(--radius-button); cursor:pointer;
+  font-size:14px; color:var(--primary); font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.pt-nav-btn:hover { background:var(--primary-light); }
+.pt-donem { font-size:14px; font-weight:700; color:var(--text); min-width:130px; text-align:center; }
 
-.pt-takvim-hdr { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:4px; }
-.pt-takvim-hdr > div { text-align:center; font-size:11px; font-weight:600; color:var(--gray-400); padding:3px 0; }
-.pt-takvim-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
-.pt-gun { border-radius:6px; padding:5px; min-height:52px; display:flex; flex-direction:column; gap:2px; transition:box-shadow .12s; border:1px solid var(--gray-100); background:white; }
-.pt-gun-aktif:hover { box-shadow:var(--shadow-md); }
-.pt-gun-hftsonu { background:var(--gray-50); }
-.pt-gun-no { font-size:11px; font-weight:600; color:var(--gray-500); }
-.pt-durum-chip { font-size:9.5px; font-weight:600; padding:2px 4px; border-radius:3px; text-align:center; }
+/* Lejant */
+.pt-lejant {
+  display:flex; align-items:center; flex-wrap:wrap;
+  gap:var(--sp-m); margin-bottom:var(--sp-s);
+  font-size:12px; color:var(--text-2);
+}
+.pt-lejant-oge { display:flex; align-items:center; gap:var(--sp-xs); }
+.pt-lejant-kutu {
+  width:18px; height:18px; border-radius:var(--radius-sm);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700;
+}
+.pt-lejant-ipucu { margin-left:auto; color:var(--text-3); font-style:italic; }
+
+/* Cetvel tablosu */
+.pt-cetvel-sarmal { overflow-x:auto; }
+.pt-cetvel { border-collapse:separate; border-spacing:0; width:100%; }
+.pt-cetvel th, .pt-cetvel td { border-bottom:1px solid var(--gray-200); }
+
+/* Sol ad sütunu sabit */
+.pt-ad-bas, .pt-ad {
+  position:sticky; left:0; z-index:2;
+  background:var(--bg-container);
+  min-width:150px; max-width:190px;
+  padding:var(--sp-xxs) var(--sp-m);
+  text-align:left;
+  border-right:1px solid var(--border-split);
+}
+.pt-ad-bas { font-size:14px; font-weight:700; color:var(--text-2); z-index:3; }
+.pt-ad strong {
+  font-size:13px; font-weight:600;
+  display:block; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.pt-cetvel tbody tr:hover .pt-ad { background:var(--gray-50); }
+
+/* Gün başlıkları */
+.pt-gun-bas {
+  width:26px; min-width:26px;
+  padding:var(--sp-xxs) 0;
+  text-align:center; font-weight:700; color:var(--text-2);
+}
+.pt-gun-no { display:block; font-size:12px; line-height:14px; }
+.pt-gun-ad { display:block; font-size:10px; font-weight:400; color:var(--text-3); line-height:12px; }
+.pt-gun-bas.pt-hs { background:var(--gray-50); color:var(--text-3); }
+
+/* Gün hücreleri */
+.pt-hucre {
+  width:26px; min-width:26px; height:24px;
+  padding:0; text-align:center;
+  font-size:12px; font-weight:700;
+  cursor:pointer; user-select:none;
+  transition:outline-color .1s;
+  outline:2px solid transparent; outline-offset:-2px;
+}
+.pt-hucre:hover { outline-color:var(--primary); }
+.pt-hucre.pt-kaydediliyor { opacity:.5; }
+.pt-cetvel tbody tr:hover td { background-color:color-mix(in srgb, var(--gray-50) 60%, transparent); }
+
+/* Aylık toplamlar */
+.pt-toplam-bas, .pt-toplam {
+  width:36px; min-width:36px;
+  text-align:center; font-size:12px;
+  padding:var(--sp-xxs) var(--sp-xs);
+}
+.pt-toplam-bas { font-weight:700; color:var(--text-2); border-left:1px solid var(--border-split); }
+.pt-toplam { color:var(--text-2); }
+.pt-toplam.pt-uyari { color:var(--danger); font-weight:700; }
+.pt-cetvel th.pt-toplam-bas:first-of-type, .pt-cetvel td.pt-toplam:first-of-type { border-left:1px solid var(--border-split); }
 
 /* ── Bordro Modülü ───────────────────────────────────────────────── */
 .bordro-onizle-panel { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; padding:10px 13px; margin:8px 0; }

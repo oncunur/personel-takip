@@ -1,23 +1,35 @@
 // ─── Puantaj Modülü ────────────────────────────────────────────────
+// Aylık cetvel: satırlar personel, sütunlar ayın günleri. Hücreye
+// tıklayınca durum sırayla değişir, çift tıklayınca gün detayı açılır.
 const PuantajModul = (() => {
   const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  const GUNLER = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  const GUN_KISA = ['Pz','Pt','Sa','Ça','Pe','Cu','Ct'];
 
-  let secilenPersonel = null;
   let secilenYil = new Date().getFullYear();
   let secilenAy  = new Date().getMonth() + 1;
-  let personeller = [];
+  let filtreDepartman = '';
+  let departmanlar = [];
+  let cetvel = null;
 
-  const DURUM_RENK   = { tam:'#00802F', yarim:'#855900', devamsiz:'#DB0000', izinli:'#006CE0', resmi_tatil:'#006CE0', hafta_sonu:'#E9EBED' };
-  const DURUM_METIN  = { tam:'Tam', yarim:'Yarım', devamsiz:'Devamsız', izinli:'İzinli', resmi_tatil:'Resmi Tatil', hafta_sonu:'Hf. Sonu' };
-  const DURUM_YAZI   = { tam:'white', yarim:'white', devamsiz:'white', izinli:'white', resmi_tatil:'white', hafta_sonu:'#8C8C94' };
+  // Hücreye tıklandığında durumların izlediği sıra
+  const DONGU = [null, 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil'];
+
+  const KOD = { tam:'T', yarim:'Y', devamsiz:'D', izinli:'İ', resmi_tatil:'R' };
+  const METIN = { tam:'Tam gün', yarim:'Yarım gün', devamsiz:'Devamsız', izinli:'İzinli', resmi_tatil:'Resmi tatil' };
+  const RENK = {
+    tam:         { zemin:'#EFFFF1', yazi:'#00802F' },
+    yarim:       { zemin:'#FFFEF0', yazi:'#855900' },
+    devamsiz:    { zemin:'#FFF5F5', yazi:'#DB0000' },
+    izinli:      { zemin:'#F0FBFF', yazi:'#006CE0' },
+    resmi_tatil: { zemin:'#F3F3F7', yazi:'#424650' },
+  };
 
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
     try {
       const res = await fetch('http://localhost:8000' + url, {
         ...opts, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -25,8 +37,7 @@ const PuantajModul = (() => {
       }
       if (res.status === 204) return { _bos: true };
       return res.json();
-    } catch(e) {
-      // Ağ/zaman aşımı hatası: sahte veriye düşmek yerine açıkça bildir.
+    } catch (e) {
       if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') {
         throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
       }
@@ -34,163 +45,269 @@ const PuantajModul = (() => {
     }
   }
 
-  function takvimRender(veri) {
-    const { gunler, calisilan_gun, devamsiz_gun, izinli_gun, toplam_fazla_mesai } = veri;
-    const ilkGun = new Date(secilenYil, secilenAy - 1, 1).getDay();
-    const bosluk = (ilkGun === 0 ? 6 : ilkGun - 1);
-
-    let hucreler = '';
-    for (let i = 0; i < bosluk; i++) hucreler += `<div></div>`;
-    gunler.forEach(g => {
-      const d = parseInt(g.tarih.split('-')[2]);
-      const durum = g.durum || 'tam';
-      const hftSonu = durum === 'hafta_sonu';
-      hucreler += `
-        <div class="pt-gun ${hftSonu ? 'pt-gun-hftsonu' : 'pt-gun-aktif'}"
-             style="${!hftSonu ? `cursor:pointer` : ''}"
-             ${!hftSonu ? `onclick="PuantajModul.gunDuzenle('${g.tarih}', '${durum}', ${g.id||'null'})"` : ''}>
-          <div class="pt-gun-no">${d}</div>
-          ${durum ? `<div class="pt-durum-chip" style="background:${DURUM_RENK[durum]};color:${DURUM_YAZI[durum]}">${DURUM_METIN[durum]||durum}</div>` : '<div class="pt-durum-chip" style="background:#F3F3F7;color:#8C8C94">—</div>'}
-          ${g.fazla_mesai > 0 ? `<div style="font-size:10px;color:#855900;font-weight:600">+${g.fazla_mesai}s</div>` : ''}
-        </div>`;
-    });
-
-    document.getElementById('pt-takvim').innerHTML = `
-      <div class="pt-takvim-hdr">${GUNLER.map(g=>`<div>${g}</div>`).join('')}</div>
-      <div class="pt-takvim-grid">${hucreler}</div>
-    `;
-    document.getElementById('pt-ozet').innerHTML = `
-      <div class="pt-ozet-kart" style="border-left:3px solid #00802F"><span class="stat-sayi">${calisilan_gun}</span><span class="stat-label">Çalışılan Gün</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #DB0000"><span class="stat-sayi">${devamsiz_gun}</span><span class="stat-label">Devamsızlık</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #006CE0"><span class="stat-sayi">${izinli_gun}</span><span class="stat-label">İzinli Gün</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #855900"><span class="stat-sayi">${toplam_fazla_mesai}</span><span class="stat-label">Fazla Mesai (saat)</span></div>
-    `;
+  async function cetvelYukle() {
+    const q = new URLSearchParams({ yil: secilenYil, ay: secilenAy });
+    if (filtreDepartman) q.set('departman_id', filtreDepartman);
+    cetvel = await apiFetch(`/puantaj/cetvel?${q}`);
   }
 
-  async function yukleVeRender() {
-    if (!secilenPersonel) return;
-    document.getElementById('pt-takvim').innerHTML = `<div style="padding:40px;text-align:center;color:var(--gray-400)">Yükleniyor...</div>`;
-    const data = await apiFetch(`/puantaj/aylik?personel_id=${secilenPersonel}&yil=${secilenYil}&ay=${secilenAy}`);
-    takvimRender(data);
+  function gunBasligi(g) {
+    const d = new Date(secilenYil, secilenAy - 1, g.gun);
+    return `<th class="pt-gun-bas${g.hafta_sonu ? ' pt-hs' : ''}" title="${g.gun} ${AYLAR[secilenAy-1]}">
+      <span class="pt-gun-no">${g.gun}</span>
+      <span class="pt-gun-ad">${GUN_KISA[d.getDay()]}</span>
+    </th>`;
+  }
+
+  function hucre(satir, g) {
+    const h = satir.gunler[String(g.gun)];
+    const durum = h.durum;
+    const r = durum ? RENK[durum] : null;
+    const stil = r ? `background:${r.zemin};color:${r.yazi}` : (g.hafta_sonu ? 'background:var(--gray-50)' : '');
+    const baslik = durum ? METIN[durum] : (g.hafta_sonu ? 'Hafta sonu' : 'Kayıt yok');
+    return `<td class="pt-hucre${g.hafta_sonu ? ' pt-hs' : ''}" style="${stil}"
+      title="${satir.ad_soyad} · ${g.gun} ${AYLAR[secilenAy-1]} · ${baslik}"
+      data-pid="${satir.personel_id}" data-gun="${g.gun}" data-durum="${durum || ''}"
+      >${durum ? KOD[durum] : ''}</td>`;
+  }
+
+  function render() {
+    const { gunler, personeller } = cetvel;
+    O_icerik(`
+      <div class="personel-toolbar">
+        <div class="arama-grup">
+          <div class="pt-nav">
+            <button class="pt-nav-btn" onclick="PuantajModul.oncekiAy()">‹</button>
+            <span class="pt-donem">${AYLAR[secilenAy-1]} ${secilenYil}</span>
+            <button class="pt-nav-btn" onclick="PuantajModul.sonrakiAy()">›</button>
+          </div>
+          <select id="pt-departman" class="filtre-select">
+            <option value="">Tüm Departmanlar</option>
+            ${departmanlar.map(d => `<option value="${d.id}" ${filtreDepartman == d.id ? 'selected' : ''}>${Ortak.kacir(d.ad)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="toolbar-sagda">
+          <span style="font-size:12px;color:var(--text-3)">${personeller.length} personel</span>
+          <button class="btn-export" onclick="PuantajModul.exportCSV()">CSV İndir</button>
+        </div>
+      </div>
+
+      <div class="pt-lejant">
+        ${Object.keys(KOD).map(d => `
+          <span class="pt-lejant-oge">
+            <span class="pt-lejant-kutu" style="background:${RENK[d].zemin};color:${RENK[d].yazi}">${KOD[d]}</span>
+            ${METIN[d]}
+          </span>`).join('')}
+        <span class="pt-lejant-ipucu">Tıkla: durumu değiştir · Çift tıkla: saat ve not</span>
+      </div>
+
+      <div class="panel pt-cetvel-sarmal">
+        <table class="pt-cetvel">
+          <thead>
+            <tr>
+              <th class="pt-ad-bas">Personel</th>
+              ${gunler.map(gunBasligi).join('')}
+              <th class="pt-toplam-bas" title="Çalışılan gün">Çal</th>
+              <th class="pt-toplam-bas" title="Devamsız gün">Dev</th>
+              <th class="pt-toplam-bas" title="İzinli gün">İzn</th>
+              <th class="pt-toplam-bas" title="Fazla mesai (saat)">FM</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${personeller.length ? personeller.map(s => `
+              <tr>
+                <td class="pt-ad" title="${Ortak.kacir(s.ad_soyad)}${s.departman ? ' · ' + Ortak.kacir(s.departman) : ''}">
+                  <strong>${Ortak.kacir(s.ad_soyad)}</strong>
+                </td>
+                ${gunler.map(g => hucre(s, g)).join('')}
+                <td class="pt-toplam">${s.calisilan}</td>
+                <td class="pt-toplam${s.devamsiz ? ' pt-uyari' : ''}">${s.devamsiz}</td>
+                <td class="pt-toplam">${s.izinli}</td>
+                <td class="pt-toplam">${s.fazla_mesai || 0}</td>
+              </tr>`).join('')
+            : `<tr><td colspan="${gunler.length + 5}" style="text-align:center;padding:40px;color:var(--text-3)">Personel bulunamadı</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+
+      <div id="pt-modal" class="modal-overlay gizli">
+        <div class="modal-kart" style="max-width:420px">
+          <div class="modal-header">
+            <h3 id="pt-modal-baslik">Gün Düzenle</h3>
+            <button class="modal-kapat" onclick="PuantajModul.modalKapat()">×</button>
+          </div>
+          <div id="pt-modal-icerik"></div>
+        </div>
+      </div>
+    `);
+
+    document.getElementById('pt-departman').addEventListener('change', async e => {
+      filtreDepartman = e.target.value;
+      await cetvelYukle();
+      render();
+    });
+
+    const tablo = document.querySelector('.pt-cetvel tbody');
+    tablo.addEventListener('click', e => {
+      const td = e.target.closest('.pt-hucre');
+      if (td) durumIlerlet(td);
+    });
+    tablo.addEventListener('dblclick', e => {
+      const td = e.target.closest('.pt-hucre');
+      if (td) gunDetayAc(td);
+    });
+  }
+
+  // İçerik alanını yaz (Ortak.icerik ile aynı, modül bağımsız kalsın diye ayrı)
+  function O_icerik(html) {
+    document.getElementById('content-area').innerHTML = html;
+  }
+
+  function satirBul(pid) {
+    return cetvel.personeller.find(s => s.personel_id === Number(pid));
+  }
+
+  function toplamlariTazele(satir) {
+    const durumlar = Object.values(satir.gunler).map(h => h.durum);
+    satir.calisilan = durumlar.filter(d => d === 'tam' || d === 'yarim').length;
+    satir.devamsiz  = durumlar.filter(d => d === 'devamsiz').length;
+    satir.izinli    = durumlar.filter(d => d === 'izinli').length;
+
+    const tr = document.querySelector(`.pt-hucre[data-pid="${satir.personel_id}"]`)?.closest('tr');
+    if (!tr) return;
+    const toplamlar = tr.querySelectorAll('.pt-toplam');
+    toplamlar[0].textContent = satir.calisilan;
+    toplamlar[1].textContent = satir.devamsiz;
+    toplamlar[1].classList.toggle('pt-uyari', satir.devamsiz > 0);
+    toplamlar[2].textContent = satir.izinli;
+  }
+
+  function hucreBoya(td, durum) {
+    const r = durum ? RENK[durum] : null;
+    td.textContent = durum ? KOD[durum] : '';
+    td.dataset.durum = durum || '';
+    td.style.background = r ? r.zemin : (td.classList.contains('pt-hs') ? 'var(--gray-50)' : '');
+    td.style.color = r ? r.yazi : '';
+  }
+
+  async function durumIlerlet(td) {
+    const satir = satirBul(td.dataset.pid);
+    const gun = Number(td.dataset.gun);
+    const mevcut = td.dataset.durum || null;
+    const yeni = DONGU[(DONGU.indexOf(mevcut) + 1) % DONGU.length];
+
+    // Önce ekranda göster, sonra kaydet; hata olursa geri al.
+    const oncekiDurum = mevcut;
+    hucreBoya(td, yeni);
+    td.classList.add('pt-kaydediliyor');
+
+    const tarih = `${secilenYil}-${String(secilenAy).padStart(2,'0')}-${String(gun).padStart(2,'0')}`;
+    try {
+      if (yeni === null) {
+        const kayit = satir.gunler[String(gun)];
+        if (kayit.id) await apiFetch(`/puantaj/${kayit.id}`, { method: 'DELETE' });
+        satir.gunler[String(gun)] = { id: null, durum: null, fazla_mesai: 0 };
+      } else {
+        const s = await apiFetch('/puantaj', {
+          method: 'POST',
+          body: JSON.stringify({ personel_id: satir.personel_id, tarih: tarih, durum: yeni }),
+        });
+        satir.gunler[String(gun)] = { id: s.id, durum: yeni, fazla_mesai: s.fazla_mesai || 0 };
+      }
+      toplamlariTazele(satir);
+    } catch (err) {
+      hucreBoya(td, oncekiDurum);
+      alert(err.message);
+    } finally {
+      td.classList.remove('pt-kaydediliyor');
+    }
+  }
+
+  function gunDetayAc(td) {
+    const satir = satirBul(td.dataset.pid);
+    const gun = Number(td.dataset.gun);
+    const kayit = satir.gunler[String(gun)];
+    const tarih = `${secilenYil}-${String(secilenAy).padStart(2,'0')}-${String(gun).padStart(2,'0')}`;
+
+    document.getElementById('pt-modal-baslik').textContent =
+      `${satir.ad_soyad} — ${gun} ${AYLAR[secilenAy-1]} ${secilenYil}`;
+    document.getElementById('pt-modal-icerik').innerHTML = `
+      <form id="pt-form" class="modal-form">
+        <div class="form-group"><label>Durum</label>
+          <select name="durum">
+            ${Object.keys(KOD).map(d => `<option value="${d}" ${kayit.durum === d ? 'selected' : ''}>${METIN[d]}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group"><label>Giriş Saati</label><input type="time" name="giris_saati" value="09:00" /></div>
+          <div class="form-group"><label>Çıkış Saati</label><input type="time" name="cikis_saati" value="18:00" /></div>
+        </div>
+        <div class="form-group"><label>Fazla Mesai (saat)</label>
+          <input type="number" name="fazla_mesai" value="${kayit.fazla_mesai || 0}" min="0" max="12" step="0.5" /></div>
+        <div class="form-group"><label>Not</label><input name="notlar" placeholder="Opsiyonel..." /></div>
+        <div id="pt-form-hata" class="hata-mesaji gizli"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn-iptal" onclick="PuantajModul.modalKapat()">İptal</button>
+          <button type="submit" class="btn-kaydet">Kaydet</button>
+        </div>
+      </form>`;
+
+    document.getElementById('pt-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        const s = await apiFetch('/puantaj', { method: 'POST', body: JSON.stringify({
+          personel_id: satir.personel_id, tarih: tarih, durum: fd.get('durum'),
+          giris_saati: fd.get('giris_saati') || null, cikis_saati: fd.get('cikis_saati') || null,
+          fazla_mesai: parseFloat(fd.get('fazla_mesai')) || 0, notlar: fd.get('notlar') || null,
+        })});
+        satir.gunler[String(gun)] = { id: s.id, durum: fd.get('durum'), fazla_mesai: s.fazla_mesai || 0 };
+        hucreBoya(td, fd.get('durum'));
+        toplamlariTazele(satir);
+        PuantajModul.modalKapat();
+      } catch (err) {
+        const hata = document.getElementById('pt-form-hata');
+        hata.textContent = err.message;
+        hata.classList.remove('gizli');
+      }
+    });
+    document.getElementById('pt-modal').classList.remove('gizli');
+  }
+
+  async function donemDegistir(fark) {
+    secilenAy += fark;
+    if (secilenAy === 0)  { secilenAy = 12; secilenYil--; }
+    if (secilenAy === 13) { secilenAy = 1;  secilenYil++; }
+    await cetvelYukle();
+    render();
   }
 
   return {
     async yukle() {
-      const pData = await apiFetch('/personel?limit=100');
-      personeller = pData.veriler;
-      secilenPersonel = personeller[0]?.id || null;
-
-      document.getElementById('content-area').innerHTML = `
-        <div class="pt-toolbar">
-          <select id="pt-personel-sec" class="filtre-select" style="min-width:200px">
-            ${personeller.map(p => `<option value="${p.id}">${p.ad} ${p.soyad}</option>`).join('')}
-          </select>
-          <div class="pt-nav">
-            <button class="pt-nav-btn" onclick="PuantajModul.oncekiAy()">‹</button>
-            <span id="pt-donem-baslik" class="pt-donem">${AYLAR[secilenAy-1]} ${secilenYil}</span>
-            <button class="pt-nav-btn" onclick="PuantajModul.sonrakiAy()">›</button>
-          </div>
-          <button class="btn-export" onclick="PuantajModul.exportCSV()">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-            CSV İndir
-          </button>
-        </div>
-
-        <div class="izin-stats-wrap" id="pt-ozet" style="margin-bottom:16px"></div>
-
-        <div class="panel" style="padding:16px">
-          <div id="pt-takvim"></div>
-        </div>
-
-        <div id="pt-modal" class="modal-overlay gizli">
-          <div class="modal-kart" style="max-width:420px">
-            <div class="modal-header">
-              <h3 id="pt-modal-baslik">Gün Düzenle</h3>
-              <button class="modal-kapat" onclick="PuantajModul.modalKapat()">×</button>
-            </div>
-            <div id="pt-modal-icerik"></div>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('pt-personel-sec').addEventListener('change', e => {
-        secilenPersonel = parseInt(e.target.value);
-        yukleVeRender();
-      });
-
-      yukleVeRender();
+      const dep = await apiFetch('/personel/departmanlar');
+      departmanlar = dep || [];
+      await cetvelYukle();
+      render();
     },
 
-    oncekiAy() {
-      if (secilenAy === 1) { secilenAy = 12; secilenYil--; }
-      else secilenAy--;
-      document.getElementById('pt-donem-baslik').textContent = `${AYLAR[secilenAy-1]} ${secilenYil}`;
-      yukleVeRender();
-    },
-
-    sonrakiAy() {
-      if (secilenAy === 12) { secilenAy = 1; secilenYil++; }
-      else secilenAy++;
-      document.getElementById('pt-donem-baslik').textContent = `${AYLAR[secilenAy-1]} ${secilenYil}`;
-      yukleVeRender();
-    },
-
-    gunDuzenle(tarih, mevcutDurum, kayitId) {
-      document.getElementById('pt-modal-baslik').textContent = tarih.split('-').reverse().join('.');
-      document.getElementById('pt-modal-icerik').innerHTML = `
-        <form id="pt-form" class="modal-form">
-          <div class="form-group"><label>Durum</label>
-            <select name="durum">
-              <option value="tam"         ${mevcutDurum==='tam'?'selected':''}>Tam Gün</option>
-              <option value="yarim"       ${mevcutDurum==='yarim'?'selected':''}>Yarım Gün</option>
-              <option value="devamsiz"    ${mevcutDurum==='devamsiz'?'selected':''}>Devamsız</option>
-              <option value="izinli"      ${mevcutDurum==='izinli'?'selected':''}>İzinli</option>
-              <option value="resmi_tatil" ${mevcutDurum==='resmi_tatil'?'selected':''}>Resmi Tatil</option>
-            </select>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-group"><label>Giriş Saati</label><input type="time" name="giris_saati" value="09:00" /></div>
-            <div class="form-group"><label>Çıkış Saati</label><input type="time" name="cikis_saati" value="18:00" /></div>
-          </div>
-          <div class="form-group"><label>Fazla Mesai (saat)</label><input type="number" name="fazla_mesai" value="0" min="0" max="12" step="0.5" /></div>
-          <div class="form-group"><label>Notlar</label><input name="notlar" placeholder="Opsiyonel not..." /></div>
-          <div id="pt-form-hata" class="hata-mesaji gizli"></div>
-          <div class="modal-footer">
-            <button type="button" class="btn-iptal" onclick="PuantajModul.modalKapat()">İptal</button>
-            <button type="submit" class="btn-kaydet">Kaydet</button>
-          </div>
-        </form>
-      `;
-      document.getElementById('pt-form').addEventListener('submit', async e => {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        const veri = { personel_id: secilenPersonel, tarih, durum: fd.get('durum'),
-          giris_saati: fd.get('giris_saati') || null, cikis_saati: fd.get('cikis_saati') || null,
-          fazla_mesai: parseFloat(fd.get('fazla_mesai')) || 0, notlar: fd.get('notlar') || null };
-        try {
-          await apiFetch('/puantaj', { method: 'POST', body: JSON.stringify(veri) });
-          this.modalKapat(); yukleVeRender();
-        } catch(err) {
-          const hata = document.getElementById('pt-form-hata');
-          hata.textContent = err.message; hata.classList.remove('gizli');
-        }
-      });
-      document.getElementById('pt-modal').classList.remove('gizli');
-    },
-
+    oncekiAy()  { donemDegistir(-1); },
+    sonrakiAy() { donemDegistir(1); },
     modalKapat() { document.getElementById('pt-modal').classList.add('gizli'); },
 
-    async exportCSV() {
-      const data = await apiFetch(`/puantaj/aylik?personel_id=${secilenPersonel}&yil=${secilenYil}&ay=${secilenAy}`);
-      const veri = data;
-      const satirlar = [
-        ['Tarih','Durum','Giriş','Çıkış','Fazla Mesai'],
-        ...veri.gunler.map(g => [g.tarih, DURUM_METIN[g.durum]||'', g.giris_saati||'', g.cikis_saati||'', g.fazla_mesai||0]),
-      ];
-      const icerik = '﻿' + satirlar.map(r => r.join(',')).join('\n');
+    exportCSV() {
+      const { gunler, personeller } = cetvel;
+      const baslik = ['Personel', 'Departman', ...gunler.map(g => g.gun), 'Çalışılan', 'Devamsız', 'İzinli', 'Fazla Mesai'];
+      const satirlar = personeller.map(s => [
+        s.ad_soyad, s.departman || '',
+        ...gunler.map(g => KOD[s.gunler[String(g.gun)].durum] || ''),
+        s.calisilan, s.devamsiz, s.izinli, s.fazla_mesai || 0,
+      ]);
+      const csv = '﻿' + [baslik, ...satirlar]
+        .map(r => r.map(h => `"${String(h).replace(/"/g, '""')}"`).join(';'))
+        .join('\n');
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([icerik], { type: 'text/csv;charset=utf-8;' }));
-      a.download = `puantaj-${secilenYil}-${String(secilenAy).padStart(2,'0')}.csv`;
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      a.download = `puantaj-cetvel-${secilenYil}-${String(secilenAy).padStart(2,'0')}.csv`;
       a.click();
     },
   };
