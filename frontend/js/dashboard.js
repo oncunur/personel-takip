@@ -1,3 +1,17 @@
+// Yalnızca yöneticilerin erişebildiği sayfalar. Backend bu uçları 403 ile
+// koruyor; menüden gizlemek kullanıcıya boş/hatalı ekran göstermeyi önler.
+const YONETICI_SAYFALARI = ['bordro', 'ozet', 'raporlar'];
+
+function menuyuRoleGoreAyarla(kullanici) {
+  const yonetici = ['admin', 'yonetici'].includes(kullanici.rol);
+  if (yonetici) return;
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (YONETICI_SAYFALARI.includes(item.dataset.page)) {
+      item.classList.add('gizli');
+    }
+  });
+}
+
 function rolBadge(rol) {
   return `<span class="rol-badge rol-${rol}">${rol.charAt(0).toUpperCase() + rol.slice(1)}</span>`;
 }
@@ -14,6 +28,7 @@ function dashboardYukle(kullanici) {
     ${rolBadge(kullanici.rol)}
   `;
 
+  menuyuRoleGoreAyarla(kullanici);
   anasayfaIcerigi(kullanici);
 
   // Nav tıklamaları

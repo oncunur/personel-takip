@@ -5,7 +5,7 @@ import calendar
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici
+from routers.auth import yonetici_yetkisi
 
 router = APIRouter(prefix="/ozet", tags=["Ozet"])
 
@@ -15,7 +15,7 @@ def aylik_ozet(
     yil: int = Query(...),
     ay: int = Query(...),
     db: Session = Depends(get_db),
-    _: models.Kullanici = Depends(aktif_kullanici),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
 ):
     son_gun = calendar.monthrange(yil, ay)[1]
     ay_baslangic = date(yil, ay, 1)

@@ -1,0 +1,4 @@
+# Geliştirme ve test bağımlılıkları
+-r requirements.txt
+pytest==8.4.2
+httpx==0.27.0

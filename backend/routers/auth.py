@@ -28,6 +28,35 @@ def aktif_kullanici(token: str = Depends(oauth2_scheme), db: Session = Depends(g
     return kullanici
 
 
+def yonetici_yetkisi(kullanici: models.Kullanici = Depends(aktif_kullanici)) -> models.Kullanici:
+    """Yalnızca admin ve yönetici rollerinin erişebildiği uç noktalar için bağımlılık."""
+    if kullanici.rol not in (models.Rol.admin, models.Rol.yonetici):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Yetki yetersiz")
+    return kullanici
+
+
+def admin_yetkisi(kullanici: models.Kullanici = Depends(aktif_kullanici)) -> models.Kullanici:
+    """Yalnızca admin rolünün erişebildiği uç noktalar için bağımlılık."""
+    if kullanici.rol != models.Rol.admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Yetki yetersiz")
+    return kullanici
+
+
+def yonetici_mi(kullanici: models.Kullanici) -> bool:
+    """Kullanıcı tüm personelin verisini görmeye yetkili mi?"""
+    return kullanici.rol in (models.Rol.admin, models.Rol.yonetici)
+
+
+def kullanici_personeli(db: Session, kullanici: models.Kullanici):
+    """Giriş yapan kullanıcıya karşılık gelen Personel kaydı; eşleşme yoksa None.
+
+    Eşleştirme e-posta üzerinden yapılır. Çağıran taraf None durumunu
+    mutlaka ele almalıdır: eşleşme yokken filtre atlanırsa personel rolündeki
+    kullanıcı herkesin verisini görür.
+    """
+    return db.query(models.Personel).filter(models.Personel.email == kullanici.email).first()
+
+
 @router.post("/giris", response_model=schemas.Token)
 def giris(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     kullanici = auth_utils.kullanici_dogrula(db, form.username, form.password)

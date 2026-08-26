@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici
+from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/izin", tags=["İzin Yönetimi"])
@@ -73,11 +73,13 @@ def izin_listesi(
 ):
     q = db.query(models.IzinTalep)
 
-    # Personel sadece kendi izinlerini görür
-    if kullanici.rol == models.Rol.personel:
-        p = db.query(models.Personel).filter(models.Personel.email == kullanici.email).first()
-        if p:
-            q = q.filter(models.IzinTalep.personel_id == p.id)
+    # Personel sadece kendi izinlerini görür. Kullanıcının Personel kaydı
+    # bulunamazsa filtre atlanmamalı — aksi halde tüm izinler görünür.
+    if not yonetici_mi(kullanici):
+        kendi = kullanici_personeli(db, kullanici)
+        if kendi is None:
+            return {"toplam": 0, "sayfa": sayfa, "limit": limit, "veriler": []}
+        q = q.filter(models.IzinTalep.personel_id == kendi.id)
 
     if personel_id:
         q = q.filter(models.IzinTalep.personel_id == personel_id)
@@ -105,6 +107,12 @@ def izin_talep(
 ):
     if veri.bitis_tarihi < veri.baslangic_tarihi:
         raise HTTPException(status_code=400, detail="Bitiş tarihi başlangıçtan önce olamaz")
+
+    # Personel yalnızca kendi adına talep açabilir.
+    if not yonetici_mi(kullanici):
+        kendi = kullanici_personeli(db, kullanici)
+        if kendi is None or veri.personel_id != kendi.id:
+            raise HTTPException(status_code=403, detail="Yalnızca kendi adınıza izin talebi oluşturabilirsiniz")
 
     # Çakışma kontrolü
     cakisan = db.query(models.IzinTalep).filter(
@@ -164,6 +172,13 @@ def izin_iptal(
     talep = db.query(models.IzinTalep).filter(models.IzinTalep.id == tid).first()
     if not talep:
         raise HTTPException(status_code=404, detail="Talep bulunamadı")
+
+    # Personel yalnızca kendi talebini iptal edebilir.
+    if not yonetici_mi(kullanici):
+        kendi = kullanici_personeli(db, kullanici)
+        if kendi is None or talep.personel_id != kendi.id:
+            raise HTTPException(status_code=403, detail="Bu talebi iptal etme yetkiniz yok")
+
     if talep.durum not in [models.IzinDurum.beklemede]:
         raise HTTPException(status_code=400, detail="Sadece beklemedeki talepler iptal edilebilir")
     talep.durum = models.IzinDurum.iptal
@@ -175,8 +190,14 @@ def izin_bakiye(
     personel_id: int,
     yil: int = Query(default=None),
     db: Session = Depends(get_db),
-    _: models.Kullanici = Depends(aktif_kullanici),
+    kullanici: models.Kullanici = Depends(aktif_kullanici),
 ):
+    # Personel yalnızca kendi izin bakiyesini sorgulayabilir.
+    if not yonetici_mi(kullanici):
+        kendi = kullanici_personeli(db, kullanici)
+        if kendi is None or personel_id != kendi.id:
+            raise HTTPException(status_code=403, detail="Bu bilgiyi görme yetkiniz yok")
+
     hedef_yil = yil or date.today().year
     kullanilan = db.query(models.IzinTalep).filter(
         models.IzinTalep.personel_id == personel_id,

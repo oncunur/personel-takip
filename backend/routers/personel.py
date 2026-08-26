@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici
+from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
 from pydantic import BaseModel, EmailStr
 from datetime import date
 from decimal import Decimal
@@ -80,8 +80,17 @@ class PersonelBilgi(BaseModel):
 
 
 # ---------- Yardımcı ----------
-def personel_bilgi(p: models.Personel) -> dict:
-    return {
+# Yalnızca yöneticilerin ve kaydın sahibinin görebileceği alanlar
+HASSAS_ALANLAR = ("tc_kimlik", "dogum_tarihi", "adres", "maas", "notlar")
+
+
+def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
+    """Personel kaydını sözlüğe çevirir.
+
+    hassas=False verildiğinde TC kimlik, doğum tarihi, adres, maaş ve notlar
+    alanları None döner; kalan alanlar şirket içi rehber bilgisidir.
+    """
+    veri = {
         "id": p.id,
         "ad": p.ad,
         "soyad": p.soyad,
@@ -99,6 +108,10 @@ def personel_bilgi(p: models.Personel) -> dict:
         "maas": float(p.maas) if p.maas else None,
         "notlar": p.notlar,
     }
+    if not hassas:
+        for alan in HASSAS_ALANLAR:
+            veri[alan] = None
+    return veri
 
 
 # ---------- Departman Endpoints ----------
@@ -147,7 +160,7 @@ def personel_listesi(
     sayfa: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    _: models.Kullanici = Depends(aktif_kullanici),
+    kullanici: models.Kullanici = Depends(aktif_kullanici),
 ):
     q = db.query(models.Personel)
     if arama:
@@ -163,7 +176,15 @@ def personel_listesi(
         q = q.filter(models.Personel.durum == durum)
     toplam = q.count()
     personeller = q.offset((sayfa - 1) * limit).limit(limit).all()
-    return {"toplam": toplam, "sayfa": sayfa, "limit": limit, "veriler": [personel_bilgi(p) for p in personeller]}
+
+    # Personel rolü rehber görünümü alır; kendi kaydını tam görür.
+    tam_yetki = yonetici_mi(kullanici)
+    kendi = None if tam_yetki else kullanici_personeli(db, kullanici)
+    veriler = [
+        personel_bilgi(p, hassas=tam_yetki or (kendi is not None and p.id == kendi.id))
+        for p in personeller
+    ]
+    return {"toplam": toplam, "sayfa": sayfa, "limit": limit, "veriler": veriler}
 
 
 @router.post("", status_code=201)
@@ -179,11 +200,15 @@ def personel_ekle(veri: PersonelOlustur, db: Session = Depends(get_db), kullanic
 
 
 @router.get("/{pid}")
-def personel_getir(pid: int, db: Session = Depends(get_db), _: models.Kullanici = Depends(aktif_kullanici)):
+def personel_getir(pid: int, db: Session = Depends(get_db), kullanici: models.Kullanici = Depends(aktif_kullanici)):
     p = db.query(models.Personel).filter(models.Personel.id == pid).first()
     if not p:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
-    return personel_bilgi(p)
+    tam_yetki = yonetici_mi(kullanici)
+    if not tam_yetki:
+        kendi = kullanici_personeli(db, kullanici)
+        tam_yetki = kendi is not None and kendi.id == p.id
+    return personel_bilgi(p, hassas=tam_yetki)
 
 
 @router.put("/{pid}")

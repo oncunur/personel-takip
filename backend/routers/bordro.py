@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici
+from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/bordro", tags=["Bordro"])
@@ -122,9 +122,18 @@ def bordro_listesi(
     sayfa: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    _: models.Kullanici = Depends(aktif_kullanici),
+    kullanici: models.Kullanici = Depends(aktif_kullanici),
 ):
     q = db.query(models.Bordro)
+
+    # Personel yalnızca kendi bordrosunu görür. Kullanıcının Personel kaydı
+    # yoksa hiçbir bordro dönmemeli — filtresiz sorgu tüm maaşları açar.
+    if not yonetici_mi(kullanici):
+        kendi = kullanici_personeli(db, kullanici)
+        if kendi is None:
+            return {"toplam": 0, "veriler": []}
+        q = q.filter(models.Bordro.personel_id == kendi.id)
+
     if yil:        q = q.filter(models.Bordro.yil == yil)
     if ay:         q = q.filter(models.Bordro.ay == ay)
     if personel_id: q = q.filter(models.Bordro.personel_id == personel_id)
