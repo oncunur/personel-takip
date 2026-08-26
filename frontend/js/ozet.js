@@ -5,7 +5,7 @@ const OzetModul = (() => {
   let secilenYil = new Date().getFullYear();
   let secilenAy  = new Date().getMonth() + 1;
 
-  const DURUM_RENK  = { taslak:'#F59E0B', onaylandi:'#4F6EF7', odendi:'#22C55E' };
+  const DURUM_RENK  = { taslak:'#FAAD14', onaylandi:'#1677FF', odendi:'#52C41A' };
   const DURUM_METIN = { taslak:'Taslak', onaylandi:'Onaylandı', odendi:'Ödendi' };
 
 
@@ -52,13 +52,13 @@ const OzetModul = (() => {
           <strong>Toplam</strong>
           <span style="font-size:11px;color:var(--gray-400);margin-left:8px">${veriler.length} personel · ${bordroSayisi} bordro</span>
         </td>
-        <td class="ozet-sayi" style="color:#22C55E;font-weight:700">${calisilan}</td>
-        <td class="ozet-sayi" style="color:#EF4444;font-weight:700">${devamsiz||'—'}</td>
-        <td class="ozet-sayi" style="color:#4F6EF7;font-weight:700">${izinli||'—'}</td>
-        <td class="ozet-sayi" style="color:#F59E0B;font-weight:700">${fm > 0 ? fm + 's' : '—'}</td>
+        <td class="ozet-sayi" style="color:#52C41A;font-weight:700">${calisilan}</td>
+        <td class="ozet-sayi" style="color:#FF4D4F;font-weight:700">${devamsiz||'—'}</td>
+        <td class="ozet-sayi" style="color:#1677FF;font-weight:700">${izinli||'—'}</td>
+        <td class="ozet-sayi" style="color:#FAAD14;font-weight:700">${fm > 0 ? fm + 's' : '—'}</td>
         <td class="ozet-sayi"><strong>${tl(brutTop||null)}</strong></td>
-        <td class="ozet-sayi" style="color:#EF4444"><strong>${tl(kesTop||null)}</strong></td>
-        <td class="ozet-sayi" style="color:#22C55E"><strong>${tl(netTop||null)}</strong></td>
+        <td class="ozet-sayi" style="color:#FF4D4F"><strong>${tl(kesTop||null)}</strong></td>
+        <td class="ozet-sayi" style="color:#52C41A"><strong>${tl(netTop||null)}</strong></td>
         <td></td>
       </tr>`;
   }
@@ -79,13 +79,13 @@ const OzetModul = (() => {
           <td><strong style="color:var(--gray-800)">${v.ad} ${v.soyad}</strong></td>
           <td><span style="font-size:12px;color:var(--gray-500)">${v.departman||'—'}</span></td>
           <td style="font-size:12px;color:var(--gray-500)">${v.pozisyon||'—'}</td>
-          <td class="ozet-sayi" style="color:#22C55E;font-weight:600">${v.calisilan_gun}</td>
+          <td class="ozet-sayi" style="color:#52C41A;font-weight:600">${v.calisilan_gun}</td>
           <td class="ozet-sayi ${v.devamsiz_gun > 0 ? 'ozet-devamsiz' : 'ozet-sifir'}">${v.devamsiz_gun > 0 ? v.devamsiz_gun : '—'}</td>
           <td class="ozet-sayi ${v.izinli_gun > 0 ? 'ozet-izinli' : 'ozet-sifir'}">${v.izinli_gun > 0 ? v.izinli_gun : '—'}</td>
           <td class="ozet-sayi ${v.fazla_mesai > 0 ? 'ozet-fm' : 'ozet-sifir'}">${v.fazla_mesai > 0 ? v.fazla_mesai + 's' : '—'}</td>
           <td class="ozet-sayi">${tl(v.brut_maas)}</td>
-          <td class="ozet-sayi" style="${kesinti ? 'color:#EF4444' : ''}">${tl(kesinti)}</td>
-          <td class="ozet-sayi" style="${v.net_maas ? 'color:#22C55E;font-weight:600' : ''}">${tl(v.net_maas)}</td>
+          <td class="ozet-sayi" style="${kesinti ? 'color:#FF4D4F' : ''}">${tl(kesinti)}</td>
+          <td class="ozet-sayi" style="${v.net_maas ? 'color:#52C41A;font-weight:600' : ''}">${tl(v.net_maas)}</td>
           <td style="text-align:center">${durumBadge(v.bordro_durum)}</td>
         </tr>`;
     }).join('');

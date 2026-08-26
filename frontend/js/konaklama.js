@@ -10,7 +10,7 @@ const KonaklamaModul = (() => {
     santiye_barakasi: 'Şantiye Barakası', otel: 'Otel',
   };
   const DURUM = { aktif: 'Aktif', bos: 'Boş', pasif: 'Pasif' };
-  const DURUM_RENK = { aktif: '#22C55E', bos: '#6B7280', pasif: '#9CA3AF' };
+  const DURUM_RENK = { aktif: '#52C41A', bos: '#8C8C8C', pasif: '#BFBFBF' };
   const GIDER_TUR = {
     kira: 'Kira', elektrik: 'Elektrik', su: 'Su', dogalgaz: 'Doğalgaz',
     internet: 'İnternet', aidat: 'Aidat', tamir: 'Tamir', temizlik: 'Temizlik', diger: 'Diğer',
@@ -32,9 +32,9 @@ const KonaklamaModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Konut', deger: ozet.konut_sayisi, alt: `${ozet.toplam_kapasite} yatak kapasitesi` },
-        { label: 'Doluluk', deger: `%${ozet.doluluk_yuzde}`, alt: `${ozet.dolu_yatak} dolu / ${ozet.bos_yatak} boş`, renk: ozet.doluluk_yuzde >= 90 ? '#EF4444' : '#22C55E' },
-        { label: 'Aylık Kira', deger: O.tl(ozet.aylik_kira_toplam), alt: 'toplam yükümlülük', renk: '#8B5CF6' },
-        { label: 'Ödenmemiş Gider', deger: O.tl(ozet.odenmemis_gider_tutar), alt: `${ozet.odenmemis_gider_sayisi} kayıt`, renk: ozet.odenmemis_gider_sayisi ? '#F59E0B' : '#22C55E' },
+        { label: 'Doluluk', deger: `%${ozet.doluluk_yuzde}`, alt: `${ozet.dolu_yatak} dolu / ${ozet.bos_yatak} boş`, renk: ozet.doluluk_yuzde >= 90 ? '#FF4D4F' : '#52C41A' },
+        { label: 'Aylık Kira', deger: O.tl(ozet.aylik_kira_toplam), alt: 'toplam yükümlülük', renk: '#722ED1' },
+        { label: 'Ödenmemiş Gider', deger: O.tl(ozet.odenmemis_gider_tutar), alt: `${ozet.odenmemis_gider_sayisi} kayıt`, renk: ozet.odenmemis_gider_sayisi ? '#FAAD14' : '#52C41A' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -130,7 +130,7 @@ const KonaklamaModul = (() => {
               <td>${O.kacir(k.oda_no || '—')}</td>
               <td>${O.tarih(k.giris_tarihi)}</td>
               <td>${k.gun_sayisi} gün</td>
-              <td>${k.aktif ? O.rozet('Kalıyor', '#22C55E') : O.rozet('Çıkış: ' + O.tarih(k.cikis_tarihi), '#9CA3AF')}</td>
+              <td>${k.aktif ? O.rozet('Kalıyor', '#52C41A') : O.rozet('Çıkış: ' + O.tarih(k.cikis_tarihi), '#BFBFBF')}</td>
               <td class="islem-td">${y && k.aktif ? `<button class="btn-mini" onclick="KonaklamaModul.cikisYap(${k.id})">Çıkış Ver</button>` : ''}</td>
             </tr>`).join('') : O.bosSatir('Yerleşim kaydı yok', 7)}
           </tbody>
@@ -161,7 +161,7 @@ const KonaklamaModul = (() => {
               <td>${GIDER_TUR[g.tur] || g.tur}</td>
               <td>${String(g.ay).padStart(2, '0')}/${g.yil}</td>
               <td><strong>${O.tlTam(g.tutar)}</strong></td>
-              <td>${g.odendi ? O.rozet('Ödendi ' + O.tarih(g.odeme_tarihi), '#22C55E') : O.rozet('Bekliyor', '#F59E0B')}</td>
+              <td>${g.odendi ? O.rozet('Ödendi ' + O.tarih(g.odeme_tarihi), '#52C41A') : O.rozet('Bekliyor', '#FAAD14')}</td>
               <td class="islem-td">
                 ${y && !g.odendi ? `<button class="btn-mini onay" onclick="KonaklamaModul.giderOde(${g.id})">Ödendi İşaretle</button>` : ''}
                 ${y ? `<button class="btn-ikon btn-sil" title="Sil" onclick="KonaklamaModul.giderSil(${g.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button>` : ''}

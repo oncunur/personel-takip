@@ -8,9 +8,9 @@ const PuantajModul = (() => {
   let secilenAy  = new Date().getMonth() + 1;
   let personeller = [];
 
-  const DURUM_RENK   = { tam:'#22C55E', yarim:'#F59E0B', devamsiz:'#EF4444', izinli:'#4F6EF7', resmi_tatil:'#8B5CF6', hafta_sonu:'#E5E7EB' };
+  const DURUM_RENK   = { tam:'#52C41A', yarim:'#FAAD14', devamsiz:'#FF4D4F', izinli:'#1677FF', resmi_tatil:'#722ED1', hafta_sonu:'#F0F0F0' };
   const DURUM_METIN  = { tam:'Tam', yarim:'Yarım', devamsiz:'Devamsız', izinli:'İzinli', resmi_tatil:'Resmi Tatil', hafta_sonu:'Hf. Sonu' };
-  const DURUM_YAZI   = { tam:'white', yarim:'white', devamsiz:'white', izinli:'white', resmi_tatil:'white', hafta_sonu:'#9CA3AF' };
+  const DURUM_YAZI   = { tam:'white', yarim:'white', devamsiz:'white', izinli:'white', resmi_tatil:'white', hafta_sonu:'#BFBFBF' };
 
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
@@ -50,8 +50,8 @@ const PuantajModul = (() => {
              style="${!hftSonu ? `cursor:pointer` : ''}"
              ${!hftSonu ? `onclick="PuantajModul.gunDuzenle('${g.tarih}', '${durum}', ${g.id||'null'})"` : ''}>
           <div class="pt-gun-no">${d}</div>
-          ${durum ? `<div class="pt-durum-chip" style="background:${DURUM_RENK[durum]};color:${DURUM_YAZI[durum]}">${DURUM_METIN[durum]||durum}</div>` : '<div class="pt-durum-chip" style="background:#F3F4F6;color:#9CA3AF">—</div>'}
-          ${g.fazla_mesai > 0 ? `<div style="font-size:10px;color:#F59E0B;font-weight:600">+${g.fazla_mesai}s</div>` : ''}
+          ${durum ? `<div class="pt-durum-chip" style="background:${DURUM_RENK[durum]};color:${DURUM_YAZI[durum]}">${DURUM_METIN[durum]||durum}</div>` : '<div class="pt-durum-chip" style="background:#F5F5F5;color:#BFBFBF">—</div>'}
+          ${g.fazla_mesai > 0 ? `<div style="font-size:10px;color:#FAAD14;font-weight:600">+${g.fazla_mesai}s</div>` : ''}
         </div>`;
     });
 
@@ -60,10 +60,10 @@ const PuantajModul = (() => {
       <div class="pt-takvim-grid">${hucreler}</div>
     `;
     document.getElementById('pt-ozet').innerHTML = `
-      <div class="pt-ozet-kart" style="border-left:3px solid #22C55E"><span class="stat-sayi">${calisilan_gun}</span><span class="stat-label">Çalışılan Gün</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #EF4444"><span class="stat-sayi">${devamsiz_gun}</span><span class="stat-label">Devamsızlık</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #4F6EF7"><span class="stat-sayi">${izinli_gun}</span><span class="stat-label">İzinli Gün</span></div>
-      <div class="pt-ozet-kart" style="border-left:3px solid #F59E0B"><span class="stat-sayi">${toplam_fazla_mesai}</span><span class="stat-label">Fazla Mesai (saat)</span></div>
+      <div class="pt-ozet-kart" style="border-left:3px solid #52C41A"><span class="stat-sayi">${calisilan_gun}</span><span class="stat-label">Çalışılan Gün</span></div>
+      <div class="pt-ozet-kart" style="border-left:3px solid #FF4D4F"><span class="stat-sayi">${devamsiz_gun}</span><span class="stat-label">Devamsızlık</span></div>
+      <div class="pt-ozet-kart" style="border-left:3px solid #1677FF"><span class="stat-sayi">${izinli_gun}</span><span class="stat-label">İzinli Gün</span></div>
+      <div class="pt-ozet-kart" style="border-left:3px solid #FAAD14"><span class="stat-sayi">${toplam_fazla_mesai}</span><span class="stat-label">Fazla Mesai (saat)</span></div>
     `;
   }
 

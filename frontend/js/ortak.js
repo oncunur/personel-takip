@@ -57,8 +57,8 @@ const Ortak = (() => {
   // Kalan güne göre renk: geçmiş kırmızı, 30 güne kadar turuncu, sonrası nötr
   function kalanRozet(gun) {
     if (gun === null || gun === undefined) return '<span style="color:var(--gray-400)">—</span>';
-    if (gun < 0) return rozet(`${Math.abs(gun)} gün geçti`, '#EF4444');
-    if (gun <= 30) return rozet(`${gun} gün kaldı`, '#F59E0B');
+    if (gun < 0) return rozet(`${Math.abs(gun)} gün geçti`, '#FF4D4F');
+    if (gun <= 30) return rozet(`${gun} gün kaldı`, '#FAAD14');
     return `<span style="color:var(--gray-500)">${gun} gün</span>`;
   }
 
@@ -83,7 +83,7 @@ const Ortak = (() => {
   }
 
   function doluluk(yuzde) {
-    const renk = yuzde >= 100 ? '#EF4444' : yuzde >= 70 ? '#F59E0B' : '#22C55E';
+    const renk = yuzde >= 100 ? '#FF4D4F' : yuzde >= 70 ? '#FAAD14' : '#52C41A';
     return `<div class="doluluk-bar" title="%${yuzde}"><span style="width:${Math.min(yuzde, 100)}%;background:${renk}"></span></div>`;
   }
 

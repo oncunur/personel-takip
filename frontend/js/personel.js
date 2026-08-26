@@ -8,7 +8,7 @@ const PersonelModul = (() => {
   let duzenleId = null;
 
 
-  const durumRenk = { aktif:'#22C55E', pasif:'#9CA3AF', izinli:'#F59E0B' };
+  const durumRenk = { aktif:'#52C41A', pasif:'#BFBFBF', izinli:'#FAAD14' };
   const durumEtiket = { aktif:'Aktif', pasif:'Pasif', izinli:'İzinli' };
   const cinsiyetEtiket = { erkek:'Erkek', kadin:'Kadın', belirtilmemis:'—' };
 
@@ -253,7 +253,7 @@ const PersonelModul = (() => {
 
     async duzenleAc(id) {
       duzenleId = id;
-      const p = await apiFetch(`/personel/${id}`)(x=>x.id===id) || {};
+      const p = await apiFetch(`/personel/${id}`);
       document.getElementById('modal-baslik').textContent = 'Personel Düzenle';
       document.getElementById('modal-icerik').innerHTML = formHtml(p);
       document.getElementById('personel-modal').classList.remove('gizli');
@@ -273,7 +273,7 @@ const PersonelModul = (() => {
     },
 
     async detayAc(id) {
-      const p = await apiFetch(`/personel/${id}`)(x=>x.id===id) || {};
+      const p = await apiFetch(`/personel/${id}`);
       document.getElementById('modal-baslik').textContent = `${p.ad} ${p.soyad}`;
       document.getElementById('modal-icerik').innerHTML = `
         <div class="detay-grid">

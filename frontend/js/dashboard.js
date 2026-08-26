@@ -102,7 +102,7 @@ async function anasayfaOzetYukle(kullanici) {
       <div class="panel-header">Bekleyen İşler</div>
       ${isler.map(i => `<div class="uyari-satir" style="cursor:pointer" onclick="sayfayaGit('${i.sayfa}')">
         <span class="uyari-ad">${i.ad}</span>
-        <span class="uyari-alt">${O.rozet(i.sayi + ' adet', i.sayi > 3 ? '#EF4444' : '#F59E0B')}</span>
+        <span class="uyari-alt">${O.rozet(i.sayi + ' adet', i.sayi > 3 ? '#FF4D4F' : '#FAAD14')}</span>
       </div>`).join('')}
     </div>` : `<div class="panel uyari-panel"><div class="uyari-satir">
         <span style="color:var(--gray-500)">Bekleyen iş yok — her şey güncel.</span></div></div>`}
@@ -110,17 +110,17 @@ async function anasayfaOzetYukle(kullanici) {
     <div class="panel-header" style="background:none;padding-left:0;margin-bottom:8px">Personel</div>
     ${O.statGrid([
       { label: 'Toplam Personel', deger: genel.toplam_personel, alt: `${genel.toplam_departman} departman` },
-      { label: 'Aktif', deger: genel.aktif_personel, alt: `${genel.izinli_personel} izinli`, renk: '#22C55E' },
-      { label: 'Bekleyen İzin', deger: genel.bekleyen_izin, alt: 'onay bekliyor', renk: genel.bekleyen_izin ? '#F59E0B' : '#22C55E' },
-      { label: 'Bu Ay İzin', deger: genel.bu_ay_izin, alt: 'onaylanmış', renk: '#8B5CF6' },
+      { label: 'Aktif', deger: genel.aktif_personel, alt: `${genel.izinli_personel} izinli`, renk: '#52C41A' },
+      { label: 'Bekleyen İzin', deger: genel.bekleyen_izin, alt: 'onay bekliyor', renk: genel.bekleyen_izin ? '#FAAD14' : '#52C41A' },
+      { label: 'Bu Ay İzin', deger: genel.bu_ay_izin, alt: 'onaylanmış', renk: '#722ED1' },
     ])}
 
     <div class="panel-header" style="background:none;padding-left:0;margin:16px 0 8px">İdari İşler</div>
     ${O.statGrid([
       { label: 'Konaklama', deger: `${konak ? konak.dolu_yatak : 0}/${konak ? konak.toplam_kapasite : 0}`, alt: `${konak ? konak.konut_sayisi : 0} konut · ${O.tl(konak ? konak.aylik_kira_toplam : 0)} kira` },
-      { label: 'Demirbaş', deger: dmb ? dmb.toplam : 0, alt: `${dmb ? dmb.zimmetli : 0} zimmetli · ${O.tl(dmb ? dmb.toplam_deger : 0)}`, renk: '#4F6EF7' },
-      { label: 'Araç', deger: arc ? arc.arac_sayisi : 0, alt: `${arc ? arc.atanan : 0} atanmış · ${O.tl(arc ? arc.yillik_gider : 0)} gider`, renk: '#8B5CF6' },
-      { label: 'Stok Değeri', deger: O.tl(stk ? stk.toplam_deger : 0), alt: `${stk ? stk.urun_sayisi : 0} kalem`, renk: '#22C55E' },
+      { label: 'Demirbaş', deger: dmb ? dmb.toplam : 0, alt: `${dmb ? dmb.zimmetli : 0} zimmetli · ${O.tl(dmb ? dmb.toplam_deger : 0)}`, renk: '#1677FF' },
+      { label: 'Araç', deger: arc ? arc.arac_sayisi : 0, alt: `${arc ? arc.atanan : 0} atanmış · ${O.tl(arc ? arc.yillik_gider : 0)} gider`, renk: '#722ED1' },
+      { label: 'Stok Değeri', deger: O.tl(stk ? stk.toplam_deger : 0), alt: `${stk ? stk.urun_sayisi : 0} kalem`, renk: '#52C41A' },
     ])}
 
     <div class="panel" style="margin-top:16px">

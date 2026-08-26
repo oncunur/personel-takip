@@ -3,11 +3,11 @@ const RaporModul = (() => {
   let grafik1 = null, grafik2 = null, grafik3 = null, grafik4 = null;
 
   const AYLAR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
-  const RENKLER = ['#4F6EF7','#22C55E','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316'];
+  const RENKLER = ['#1677FF','#52C41A','#FAAD14','#FF4D4F','#722ED1','#EB2F96','#14B8A6','#F97316'];
 
 
   const TUR_ETIKET = { yillik:'Yıllık', mazeret:'Mazeret', hastalik:'Hastalık', ucretsiz:'Ücretsiz', dogum:'Doğum', olum:'Ölüm', diger:'Diğer' };
-  const DURUM_RENK = { aktif:'#22C55E', izinli:'#F59E0B', pasif:'#9CA3AF' };
+  const DURUM_RENK = { aktif:'#52C41A', izinli:'#FAAD14', pasif:'#BFBFBF' };
   const DURUM_ETIKET = { aktif:'Aktif', izinli:'İzinli', pasif:'Pasif' };
 
   async function apiFetch(url) {
@@ -37,34 +37,34 @@ const RaporModul = (() => {
     document.getElementById('rapor-kartlar').innerHTML = `
       <div class="rapor-kart" style="border-top:3px solid var(--primary)">
         <div class="rapor-kart-ikon" style="background:var(--primary-light)">
-          <svg viewBox="0 0 20 20" fill="#4F6EF7"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+          <svg viewBox="0 0 20 20" fill="#1677FF"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
         </div>
         <div class="rapor-kart-bilgi">
           <span class="rapor-kart-sayi">${genel.toplam_personel}</span>
           <span class="rapor-kart-label">Toplam Personel</span>
         </div>
       </div>
-      <div class="rapor-kart" style="border-top:3px solid #22C55E">
-        <div class="rapor-kart-ikon" style="background:#F0FDF4">
-          <svg viewBox="0 0 20 20" fill="#22C55E"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+      <div class="rapor-kart" style="border-top:3px solid #52C41A">
+        <div class="rapor-kart-ikon" style="background:#F6FFED">
+          <svg viewBox="0 0 20 20" fill="#52C41A"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
         </div>
         <div class="rapor-kart-bilgi">
           <span class="rapor-kart-sayi">${genel.aktif_personel}</span>
           <span class="rapor-kart-label">Aktif Personel</span>
         </div>
       </div>
-      <div class="rapor-kart" style="border-top:3px solid #F59E0B">
-        <div class="rapor-kart-ikon" style="background:#FFFBEB">
-          <svg viewBox="0 0 20 20" fill="#F59E0B"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+      <div class="rapor-kart" style="border-top:3px solid #FAAD14">
+        <div class="rapor-kart-ikon" style="background:#FFFBE6">
+          <svg viewBox="0 0 20 20" fill="#FAAD14"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
         </div>
         <div class="rapor-kart-bilgi">
           <span class="rapor-kart-sayi">${genel.bekleyen_izin}</span>
           <span class="rapor-kart-label">Bekleyen İzin</span>
         </div>
       </div>
-      <div class="rapor-kart" style="border-top:3px solid #8B5CF6">
+      <div class="rapor-kart" style="border-top:3px solid #722ED1">
         <div class="rapor-kart-ikon" style="background:#F5F3FF">
-          <svg viewBox="0 0 20 20" fill="#8B5CF6"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <svg viewBox="0 0 20 20" fill="#722ED1"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
         </div>
         <div class="rapor-kart-bilgi">
           <span class="rapor-kart-sayi">${genel.bu_ay_izin}</span>
@@ -94,7 +94,7 @@ const RaporModul = (() => {
       data: {
         labels: aktifDurum.map(d => DURUM_ETIKET[d.durum] || d.durum),
         datasets: [{ data: aktifDurum.map(d => d.sayi),
-          backgroundColor: aktifDurum.map(d => DURUM_RENK[d.durum] || '#9CA3AF'),
+          backgroundColor: aktifDurum.map(d => DURUM_RENK[d.durum] || '#BFBFBF'),
           borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }],
       },
       options: { responsive:true, cutout:'65%',
@@ -120,11 +120,11 @@ const RaporModul = (() => {
         labels: AYLAR,
         datasets: [
           { label:'Talep Sayısı', data: trend.map(t => t.talep_sayisi),
-            borderColor:'#4F6EF7', backgroundColor:'rgba(79,110,247,.1)',
-            fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#4F6EF7' },
+            borderColor:'#1677FF', backgroundColor:'rgba(79,110,247,.1)',
+            fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#1677FF' },
           { label:'Toplam Gün', data: trend.map(t => t.toplam_gun),
-            borderColor:'#22C55E', backgroundColor:'rgba(34,197,94,.08)',
-            fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#22C55E' },
+            borderColor:'#52C41A', backgroundColor:'rgba(34,197,94,.08)',
+            fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#52C41A' },
         ],
       },
       options: { responsive:true,

@@ -6,7 +6,7 @@ const DemirbasModul = (() => {
   let arama = '', filtreDurum = '', filtreKategori = '';
 
   const DURUM = { depoda: 'Depoda', zimmetli: 'Zimmetli', bakimda: 'Bakımda', hurda: 'Hurda', kayip: 'Kayıp' };
-  const DURUM_RENK = { depoda: '#6B7280', zimmetli: '#4F6EF7', bakimda: '#F59E0B', hurda: '#9CA3AF', kayip: '#EF4444' };
+  const DURUM_RENK = { depoda: '#8C8C8C', zimmetli: '#1677FF', bakimda: '#FAAD14', hurda: '#BFBFBF', kayip: '#FF4D4F' };
 
 
   async function veriYukle() {
@@ -21,9 +21,9 @@ const DemirbasModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Toplam Demirbaş', deger: ozet.toplam, alt: O.tl(ozet.toplam_deger) + ' değerinde' },
-        { label: 'Zimmetli', deger: ozet.zimmetli, alt: 'personelde', renk: '#4F6EF7' },
-        { label: 'Depoda', deger: ozet.depoda, alt: 'zimmete hazır', renk: '#6B7280' },
-        { label: 'Bakım / Kayıp', deger: ozet.bakimda + ozet.kayip, alt: `${ozet.bakimda} bakımda · ${ozet.kayip} kayıp`, renk: (ozet.bakimda + ozet.kayip) ? '#F59E0B' : '#22C55E' },
+        { label: 'Zimmetli', deger: ozet.zimmetli, alt: 'personelde', renk: '#1677FF' },
+        { label: 'Depoda', deger: ozet.depoda, alt: 'zimmete hazır', renk: '#8C8C8C' },
+        { label: 'Bakım / Kayıp', deger: ozet.bakimda + ozet.kayip, alt: `${ozet.bakimda} bakımda · ${ozet.kayip} kayıp`, renk: (ozet.bakimda + ozet.kayip) ? '#FAAD14' : '#52C41A' },
       ])}
       ${O.sekmeler('dmb-tabs', [
         { key: 'demirbaslar', ad: 'Demirbaş Envanteri', rozet: demirbaslar.length },
@@ -66,9 +66,9 @@ const DemirbasModul = (() => {
               <td><strong>${O.kacir(d.ad)}</strong><span class="hucre-alt">${O.kacir(d.kod)}${d.seri_no ? ' · ' + O.kacir(d.seri_no) : ''}</span></td>
               <td><span class="departman-chip">${O.kacir(d.kategori || '—')}</span></td>
               <td>${O.kacir(d.marka || '—')}<span class="hucre-alt">${O.kacir(d.model || '')}</span></td>
-              <td>${O.tl(d.alis_bedeli)}${d.garanti_aktif ? '<span class="hucre-alt" style="color:#16A34A">garantili</span>' : ''}</td>
+              <td>${O.tl(d.alis_bedeli)}${d.garanti_aktif ? '<span class="hucre-alt" style="color:#389E0D">garantili</span>' : ''}</td>
               <td>${d.zimmetli_personel ? `<strong>${O.kacir(d.zimmetli_personel)}</strong><span class="hucre-alt">${O.tarih(d.zimmet_tarihi)}</span>` : '<span style="color:var(--gray-400)">—</span>'}</td>
-              <td>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#6B7280')}</td>
+              <td>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#8C8C8C')}</td>
               <td class="islem-td">
                 <button class="btn-ikon" title="Detay" onclick="DemirbasModul.detay(${d.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg></button>
                 ${y ? (d.zimmet_id
@@ -232,14 +232,14 @@ const DemirbasModul = (() => {
       O.modalAc(`${d.kod} — ${d.ad}`, `
         <div class="detay-grid">
           <div class="detay-satir"><span>Kategori</span><strong>${O.kacir(d.kategori || '—')}</strong></div>
-          <div class="detay-satir"><span>Durum</span>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#6B7280')}</div>
+          <div class="detay-satir"><span>Durum</span>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#8C8C8C')}</div>
           <div class="detay-satir"><span>Marka</span><strong>${O.kacir(d.marka || '—')}</strong></div>
           <div class="detay-satir"><span>Model</span><strong>${O.kacir(d.model || '—')}</strong></div>
           <div class="detay-satir"><span>Seri No</span><strong>${O.kacir(d.seri_no || '—')}</strong></div>
           <div class="detay-satir"><span>Lokasyon</span><strong>${O.kacir(d.lokasyon || '—')}</strong></div>
           <div class="detay-satir"><span>Alış Tarihi</span><strong>${O.tarih(d.alis_tarihi)}</strong></div>
           <div class="detay-satir"><span>Alış Bedeli</span><strong>${O.tl(d.alis_bedeli)}</strong></div>
-          <div class="detay-satir"><span>Garanti Bitiş</span><strong>${O.tarih(d.garanti_bitis)} ${d.garanti_aktif ? '<span style="color:#16A34A">(aktif)</span>' : ''}</strong></div>
+          <div class="detay-satir"><span>Garanti Bitiş</span><strong>${O.tarih(d.garanti_bitis)} ${d.garanti_aktif ? '<span style="color:#389E0D">(aktif)</span>' : ''}</strong></div>
           <div class="detay-satir"><span>Şu an</span><strong>${d.zimmetli_personel ? O.kacir(d.zimmetli_personel) : 'Zimmetli değil'}</strong></div>
           ${d.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${O.kacir(d.notlar)}</strong></div>` : ''}
         </div>
