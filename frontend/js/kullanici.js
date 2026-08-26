@@ -6,7 +6,7 @@ const KullaniciModul = (() => {
   let kullanicilar = [];
 
   const ROL = { admin: 'Admin', yonetici: 'Yönetici', personel: 'Personel' };
-  const ROL_RENK = { admin: '#722ED1', yonetici: '#3B82F6', personel: '#52C41A' };
+  const ROL_RENK = { admin: '#006CE0', yonetici: '#3B82F6', personel: '#00802F' };
 
   async function veriYukle() {
     kullanicilar = await O.api('/auth/kullanicilar');
@@ -18,9 +18,9 @@ const KullaniciModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Kullanıcı', deger: kullanicilar.length, alt: `${aktifler.length} aktif` },
-        { label: 'Admin', deger: aktifler.filter(k => k.rol === 'admin').length, alt: 'tam yetkili', renk: '#722ED1' },
+        { label: 'Admin', deger: aktifler.filter(k => k.rol === 'admin').length, alt: 'tam yetkili', renk: '#006CE0' },
         { label: 'Yönetici', deger: aktifler.filter(k => k.rol === 'yonetici').length, alt: 'personel verisi görebilir', renk: '#3B82F6' },
-        { label: 'Personel', deger: aktifler.filter(k => k.rol === 'personel').length, alt: 'kendi verisi', renk: '#52C41A' },
+        { label: 'Personel', deger: aktifler.filter(k => k.rol === 'personel').length, alt: 'kendi verisi', renk: '#00802F' },
       ])}
       <div class="personel-toolbar">
         <div class="arama-grup">
@@ -50,8 +50,8 @@ const KullaniciModul = (() => {
         <td><strong>${O.kacir(k.ad)} ${O.kacir(k.soyad)}</strong>${kendisi ? '<span class="hucre-alt">bu hesap sizsiniz</span>' : ''}</td>
         <td>${O.kacir(k.kullanici_adi)}</td>
         <td style="color:var(--gray-500)">${O.kacir(k.email)}</td>
-        <td>${O.rozet(ROL[k.rol] || k.rol, ROL_RENK[k.rol] || '#8C8C8C')}</td>
-        <td>${k.aktif ? O.rozet('Aktif', '#52C41A') : O.rozet('Pasif', '#BFBFBF')}</td>
+        <td>${O.rozet(ROL[k.rol] || k.rol, ROL_RENK[k.rol] || '#656871')}</td>
+        <td>${k.aktif ? O.rozet('Aktif', '#00802F') : O.rozet('Pasif', '#8C8C94')}</td>
         <td class="islem-td">
           <button class="btn-mini" onclick="KullaniciModul.duzenle(${k.id})">Düzenle</button>
           <button class="btn-mini" onclick="KullaniciModul.sifreSifirla(${k.id})">Şifre</button>

@@ -6,7 +6,7 @@ const StokModul = (() => {
   let arama = '', filtreKategori = '', sadeceKritik = false, filtreHareketTur = '';
 
   const HAREKET = { giris: 'Giriş', cikis: 'Çıkış', sayim: 'Sayım', fire: 'Fire' };
-  const HAREKET_RENK = { giris: '#52C41A', cikis: '#1677FF', sayim: '#722ED1', fire: '#FF4D4F' };
+  const HAREKET_RENK = { giris: '#00802F', cikis: '#006CE0', sayim: '#006CE0', fire: '#DB0000' };
 
 
   async function veriYukle() {
@@ -20,9 +20,9 @@ const StokModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Ürün Çeşidi', deger: ozet.urun_sayisi, alt: 'aktif kalem' },
-        { label: 'Kritik Seviye', deger: ozet.kritik_sayisi, alt: 'sipariş gerekiyor', renk: ozet.kritik_sayisi ? '#FF4D4F' : '#52C41A' },
-        { label: 'Stok Değeri', deger: O.tl(ozet.toplam_deger), alt: 'depodaki toplam', renk: '#722ED1' },
-        { label: 'Bu Ay Hareket', deger: `${O.sayi(ozet.ay_giris)} / ${O.sayi(ozet.ay_cikis)}`, alt: 'giriş / çıkış', renk: '#1677FF' },
+        { label: 'Kritik Seviye', deger: ozet.kritik_sayisi, alt: 'sipariş gerekiyor', renk: ozet.kritik_sayisi ? '#DB0000' : '#00802F' },
+        { label: 'Stok Değeri', deger: O.tl(ozet.toplam_deger), alt: 'depodaki toplam', renk: '#006CE0' },
+        { label: 'Bu Ay Hareket', deger: `${O.sayi(ozet.ay_giris)} / ${O.sayi(ozet.ay_cikis)}`, alt: 'giriş / çıkış', renk: '#006CE0' },
       ])}
 
       ${kritikler.length ? `<div class="panel uyari-panel">
@@ -30,7 +30,7 @@ const StokModul = (() => {
         ${kritikler.map(u => `<div class="uyari-satir">
           <span class="uyari-ad">${O.kacir(u.ad)}</span>
           <span style="color:var(--gray-400);font-size:12px">${O.kacir(u.kod)}</span>
-          <span class="uyari-alt">${O.rozet(`${O.sayi(u.mevcut_miktar)} ${u.birim} kaldı`, '#FF4D4F')} <span style="color:var(--gray-400);margin-left:8px">kritik: ${O.sayi(u.kritik_seviye)}</span></span>
+          <span class="uyari-alt">${O.rozet(`${O.sayi(u.mevcut_miktar)} ${u.birim} kaldı`, '#DB0000')} <span style="color:var(--gray-400);margin-left:8px">kritik: ${O.sayi(u.kritik_seviye)}</span></span>
         </div>`).join('')}
       </div>` : ''}
 
@@ -72,10 +72,10 @@ const StokModul = (() => {
         <table class="personel-tablo idari-tablo">
           <thead><tr><th>Ürün</th><th>Kategori</th><th>Mevcut</th><th>Kritik</th><th>Birim Fiyat</th><th>Değer</th><th>Raf</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(u => `
-            <tr ${u.kritik_mi ? 'style="background:#FFF2F0"' : ''}>
+            <tr ${u.kritik_mi ? 'style="background:#FFF5F5"' : ''}>
               <td><strong>${O.kacir(u.ad)}</strong><span class="hucre-alt">${O.kacir(u.kod)}</span></td>
               <td><span class="departman-chip">${O.kacir(u.kategori || '—')}</span></td>
-              <td><strong style="${u.kritik_mi ? 'color:#CF1322' : ''}">${O.sayi(u.mevcut_miktar)}</strong> <span style="color:var(--gray-400)">${O.kacir(u.birim)}</span></td>
+              <td><strong style="${u.kritik_mi ? 'color:#DB0000' : ''}">${O.sayi(u.mevcut_miktar)}</strong> <span style="color:var(--gray-400)">${O.kacir(u.birim)}</span></td>
               <td style="color:var(--gray-500)">${O.sayi(u.kritik_seviye)}</td>
               <td>${O.tlTam(u.birim_fiyat)}</td>
               <td><strong>${O.tl(u.toplam_deger)}</strong></td>
@@ -115,7 +115,7 @@ const StokModul = (() => {
             <tr>
               <td>${O.tarih(h.tarih)}</td>
               <td><strong>${O.kacir(h.urun_ad || '—')}</strong><span class="hucre-alt">${O.kacir(h.urun_kod || '')}</span></td>
-              <td>${O.rozet(HAREKET[h.tur] || h.tur, HAREKET_RENK[h.tur] || '#8C8C8C')}</td>
+              <td>${O.rozet(HAREKET[h.tur] || h.tur, HAREKET_RENK[h.tur] || '#656871')}</td>
               <td><strong>${h.tur === 'cikis' || h.tur === 'fire' ? '−' : '+'}${O.sayi(h.miktar)}</strong> <span style="color:var(--gray-400)">${O.kacir(h.birim || '')}</span></td>
               <td>${O.kacir(h.personel_ad || h.belge_no || '—')}</td>
               <td style="color:var(--gray-500)">${O.kacir(h.aciklama || '—')}</td>

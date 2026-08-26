@@ -8,7 +8,7 @@ const EvrakModul = (() => {
   const YON = { gelen: 'Gelen', giden: 'Giden' };
   const SOZ_TUR = { kira: 'Kira', hizmet: 'Hizmet', tedarik: 'Tedarik', taseron: 'Taşeron', sigorta: 'Sigorta', diger: 'Diğer' };
   const SOZ_DURUM = { aktif: 'Aktif', suresi_doldu: 'Süresi Doldu', feshedildi: 'Feshedildi' };
-  const SOZ_RENK = { aktif: '#52C41A', suresi_doldu: '#BFBFBF', feshedildi: '#FF4D4F' };
+  const SOZ_RENK = { aktif: '#00802F', suresi_doldu: '#8C8C94', feshedildi: '#DB0000' };
 
 
   async function veriYukle() {
@@ -22,9 +22,9 @@ const EvrakModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Gelen Evrak', deger: ozet.gelen, alt: 'bu yıl' },
-        { label: 'Giden Evrak', deger: ozet.giden, alt: 'bu yıl', renk: '#722ED1' },
-        { label: 'Aktif Sözleşme', deger: ozet.aktif_sozlesme, alt: O.tl(ozet.sozlesme_bedel_toplam) + ' toplam bedel', renk: '#52C41A' },
-        { label: 'Bitiş Uyarısı', deger: uyarilar.length, alt: 'yenileme gerekebilir', renk: uyarilar.length ? '#FF4D4F' : '#52C41A' },
+        { label: 'Giden Evrak', deger: ozet.giden, alt: 'bu yıl', renk: '#006CE0' },
+        { label: 'Aktif Sözleşme', deger: ozet.aktif_sozlesme, alt: O.tl(ozet.sozlesme_bedel_toplam) + ' toplam bedel', renk: '#00802F' },
+        { label: 'Bitiş Uyarısı', deger: uyarilar.length, alt: 'yenileme gerekebilir', renk: uyarilar.length ? '#DB0000' : '#00802F' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -75,7 +75,7 @@ const EvrakModul = (() => {
           <tbody>${liste.length ? liste.map(e => `
             <tr>
               <td><strong style="font-variant-numeric:tabular-nums">${O.kacir(e.evrak_no)}</strong></td>
-              <td>${O.rozet(YON[e.yon], e.yon === 'gelen' ? '#1677FF' : '#722ED1')}</td>
+              <td>${O.rozet(YON[e.yon], e.yon === 'gelen' ? '#006CE0' : '#006CE0')}</td>
               <td>${O.tarih(e.tarih)}</td>
               <td><strong>${O.kacir(e.konu)}</strong>${e.ilgili_personel ? `<span class="hucre-alt">İlgili: ${O.kacir(e.ilgili_personel)}</span>` : ''}</td>
               <td>${O.kacir(e.yon === 'gelen' ? (e.gonderen || '—') : (e.alici || '—'))}</td>
@@ -118,14 +118,14 @@ const EvrakModul = (() => {
         <table class="personel-tablo idari-tablo">
           <thead><tr><th>Sözleşme</th><th>Tür</th><th>Dönem</th><th>Kalan</th><th>Bedel</th><th>Sorumlu</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(s => `
-            <tr ${s.uyari && s.durum === 'aktif' ? 'style="background:#FFFBE6"' : ''}>
+            <tr ${s.uyari && s.durum === 'aktif' ? 'style="background:#FFFEF0"' : ''}>
               <td><strong>${O.kacir(s.baslik)}</strong><span class="hucre-alt">${O.kacir(s.karsi_taraf || '')}</span></td>
               <td><span class="departman-chip">${SOZ_TUR[s.tur] || s.tur}</span></td>
               <td>${O.tarih(s.baslangic_tarihi)}<span class="hucre-alt">→ ${O.tarih(s.bitis_tarihi)}</span></td>
               <td>${s.bitis_tarihi ? O.kalanRozet(s.kalan_gun) : '<span style="color:var(--gray-400)">süresiz</span>'}</td>
               <td><strong>${O.tl(s.bedel)}</strong></td>
               <td>${O.kacir(s.sorumlu || '—')}</td>
-              <td>${O.rozet(SOZ_DURUM[s.durum] || s.durum, SOZ_RENK[s.durum] || '#8C8C8C')}</td>
+              <td>${O.rozet(SOZ_DURUM[s.durum] || s.durum, SOZ_RENK[s.durum] || '#656871')}</td>
               <td class="islem-td">${y ? `
                 <button class="btn-ikon" title="Düzenle" onclick="EvrakModul.yeniSozlesme(${s.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg></button>
                 <button class="btn-ikon btn-sil" title="Sil" onclick="EvrakModul.sozlesmeSil(${s.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button>` : ''}

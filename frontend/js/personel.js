@@ -8,7 +8,7 @@ const PersonelModul = (() => {
   let duzenleId = null;
 
 
-  const durumRenk = { aktif:'#52C41A', pasif:'#BFBFBF', izinli:'#FAAD14' };
+  const durumRenk = { aktif:'#00802F', pasif:'#8C8C94', izinli:'#855900' };
   const durumEtiket = { aktif:'Aktif', pasif:'Pasif', izinli:'İzinli' };
   const cinsiyetEtiket = { erkek:'Erkek', kadin:'Kadın', belirtilmemis:'—' };
 

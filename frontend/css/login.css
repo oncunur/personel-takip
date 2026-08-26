@@ -1,6 +1,6 @@
 #login-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #001529 0%, #002140 50%, #001529 100%);
+  background: linear-gradient(135deg, #0F141A 0%, #0F141A 50%, #0F141A 100%);
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -123,9 +123,9 @@
 .sifre-goster svg { width: 17px; height: 17px; }
 
 .hata-mesaji {
-  background: #FFF2F0;
-  border: 1px solid #FFA39E;
-  color: #CF1322;
+  background: #FFF5F5;
+  border: 1px solid #DB0000;
+  color: #DB0000;
   padding: 10px 14px;
   border-radius: var(--radius);
   font-size: 14px;

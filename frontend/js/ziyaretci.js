@@ -25,10 +25,10 @@ const ZiyaretciModul = (() => {
     const bugunkuZiyaret = ziyaretciler.filter(z => (z.giris_zamani || '').slice(0, 10) === O.bugun()).length;
     O.icerik(`
       ${O.statGrid([
-        { label: 'Şu An İçeride', deger: icerde, alt: 'çıkış yapmamış ziyaretçi', renk: icerde ? '#FAAD14' : '#52C41A' },
+        { label: 'Şu An İçeride', deger: icerde, alt: 'çıkış yapmamış ziyaretçi', renk: icerde ? '#855900' : '#00802F' },
         { label: 'Bugünkü Ziyaret', deger: bugunkuZiyaret, alt: 'toplam giriş' },
-        { label: 'Toplantı Odası', deger: odalar.length, alt: odalar.reduce((t, o) => t + (o.kapasite || 0), 0) + ' kişi kapasite', renk: '#722ED1' },
-        { label: 'Rezervasyon', deger: gunlukRez().length, alt: O.tarih(secilenTarih), renk: '#1677FF' },
+        { label: 'Toplantı Odası', deger: odalar.length, alt: odalar.reduce((t, o) => t + (o.kapasite || 0), 0) + ' kişi kapasite', renk: '#006CE0' },
+        { label: 'Rezervasyon', deger: gunlukRez().length, alt: O.tarih(secilenTarih), renk: '#006CE0' },
       ])}
       ${O.sekmeler('zyr-tabs', [
         { key: 'ziyaretciler', ad: 'Ziyaretçi Defteri', rozet: ziyaretciler.length },
@@ -65,13 +65,13 @@ const ZiyaretciModul = (() => {
         <table class="personel-tablo idari-tablo">
           <thead><tr><th>Ziyaretçi</th><th>Firma</th><th>Ziyaret Edilen</th><th>Amaç</th><th>Giriş</th><th>Çıkış</th><th>Kart</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(z => `
-            <tr ${z.icerde ? 'style="background:#FFFBE6"' : ''}>
+            <tr ${z.icerde ? 'style="background:#FFFEF0"' : ''}>
               <td><strong>${O.kacir(z.ad_soyad)}</strong><span class="hucre-alt">${O.kacir(z.telefon || '')}</span></td>
               <td>${O.kacir(z.firma || '—')}</td>
               <td>${O.kacir(z.ziyaret_edilen || '—')}</td>
               <td style="color:var(--gray-500)">${O.kacir(z.amac || '—')}</td>
               <td>${O.saatli(z.giris_zamani)}</td>
-              <td>${z.cikis_zamani ? O.saatli(z.cikis_zamani) : O.rozet('İçeride', '#FAAD14')}</td>
+              <td>${z.cikis_zamani ? O.saatli(z.cikis_zamani) : O.rozet('İçeride', '#855900')}</td>
               <td>${O.kacir(z.kart_no || '—')}</td>
               <td class="islem-td">
                 ${z.icerde ? `<button class="btn-mini onay" onclick="ZiyaretciModul.cikis(${z.id})">Çıkış Ver</button>` : ''}

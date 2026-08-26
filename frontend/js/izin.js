@@ -8,9 +8,9 @@ const IzinModul = (() => {
   const yil = bugun.getFullYear();
 
   const TUR_ETIKET = { yillik:'Yıllık İzin', mazeret:'Mazeret', hastalik:'Hastalık', ucretsiz:'Ücretsiz', dogum:'Doğum', olum:'Ölüm', diger:'Diğer' };
-  const TUR_RENK   = { yillik:'#1677FF', mazeret:'#FAAD14', hastalik:'#FF4D4F', ucretsiz:'#8C8C8C', dogum:'#EB2F96', olum:'#434343', diger:'#722ED1' };
+  const TUR_RENK   = { yillik:'#006CE0', mazeret:'#855900', hastalik:'#DB0000', ucretsiz:'#656871', dogum:'#006CE0', olum:'#424650', diger:'#006CE0' };
   const DURUM_ETIKET = { beklemede:'Beklemede', onaylandi:'Onaylandı', reddedildi:'Reddedildi', iptal:'İptal' };
-  const DURUM_RENK   = { beklemede:'#FAAD14', onaylandi:'#52C41A', reddedildi:'#FF4D4F', iptal:'#BFBFBF' };
+  const DURUM_RENK   = { beklemede:'#855900', onaylandi:'#00802F', reddedildi:'#DB0000', iptal:'#8C8C94' };
 
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
@@ -72,7 +72,7 @@ const IzinModul = (() => {
         <span class="stat-label">Toplam Gün (Onaylı)</span>
       </div>
       ${bakiye ? `
-      <div class="izin-stat-kart" style="border-left:3px solid #722ED1; grid-column: span 1;">
+      <div class="izin-stat-kart" style="border-left:3px solid #006CE0; grid-column: span 1;">
         <span class="stat-sayi">${bakiye.kalan}<small style="font-size:13px;color:var(--gray-400)">/${bakiye.hak}</small></span>
         <span class="stat-label">Yıllık Bakiye (Kalan/Hak)</span>
       </div>` : ''}

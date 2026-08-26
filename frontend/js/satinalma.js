@@ -10,11 +10,11 @@ const SatinAlmaModul = (() => {
     siparis_verildi: 'Sipariş Verildi', teslim_alindi: 'Teslim Alındı', iptal: 'İptal',
   };
   const DURUM_RENK = {
-    beklemede: '#FAAD14', onaylandi: '#1677FF', reddedildi: '#FF4D4F',
-    siparis_verildi: '#722ED1', teslim_alindi: '#52C41A', iptal: '#BFBFBF',
+    beklemede: '#855900', onaylandi: '#006CE0', reddedildi: '#DB0000',
+    siparis_verildi: '#006CE0', teslim_alindi: '#00802F', iptal: '#8C8C94',
   };
   const ONCELIK = { dusuk: 'Düşük', normal: 'Normal', yuksek: 'Yüksek', acil: 'Acil' };
-  const ONCELIK_RENK = { dusuk: '#BFBFBF', normal: '#8C8C8C', yuksek: '#FAAD14', acil: '#FF4D4F' };
+  const ONCELIK_RENK = { dusuk: '#8C8C94', normal: '#656871', yuksek: '#855900', acil: '#DB0000' };
 
 
   async function veriYukle() {
@@ -30,10 +30,10 @@ const SatinAlmaModul = (() => {
 
     O.icerik(`
       ${O.statGrid([
-        { label: 'Bekleyen', deger: ozet.beklemede, alt: 'onay bekliyor', renk: ozet.beklemede ? '#FAAD14' : '#52C41A' },
-        { label: 'Onaylı / Siparişte', deger: ozet.onaylandi + ozet.siparis_verildi, alt: 'işlemde', renk: '#1677FF' },
-        { label: 'Teslim Alınan', deger: ozet.teslim_alindi, alt: 'bu yıl', renk: '#52C41A' },
-        { label: 'Onaylanan Tutar', deger: O.tl(ozet.onaylanan_tutar), alt: 'bu yıl', renk: '#722ED1' },
+        { label: 'Bekleyen', deger: ozet.beklemede, alt: 'onay bekliyor', renk: ozet.beklemede ? '#855900' : '#00802F' },
+        { label: 'Onaylı / Siparişte', deger: ozet.onaylandi + ozet.siparis_verildi, alt: 'işlemde', renk: '#006CE0' },
+        { label: 'Teslim Alınan', deger: ozet.teslim_alindi, alt: 'bu yıl', renk: '#00802F' },
+        { label: 'Onaylanan Tutar', deger: O.tl(ozet.onaylanan_tutar), alt: 'bu yıl', renk: '#006CE0' },
       ])}
 
       <div class="personel-toolbar">
@@ -61,10 +61,10 @@ const SatinAlmaModul = (() => {
               <td><strong style="font-variant-numeric:tabular-nums">${O.kacir(t.talep_no)}</strong><span class="hucre-alt">${O.tarih(t.tarih)}</span></td>
               <td><strong>${O.kacir(t.talep_eden || '—')}</strong><span class="hucre-alt">${O.kacir(t.departman || '')}</span></td>
               <td>${O.kacir(t.aciklama || '—')}<span class="hucre-alt">${t.kalem_sayisi} kalem</span></td>
-              <td>${O.rozet(ONCELIK[t.oncelik] || t.oncelik, ONCELIK_RENK[t.oncelik] || '#8C8C8C')}</td>
+              <td>${O.rozet(ONCELIK[t.oncelik] || t.oncelik, ONCELIK_RENK[t.oncelik] || '#656871')}</td>
               <td><strong>${O.tl(t.tahmini_tutar)}</strong></td>
               <td>${t.ihtiyac_tarihi ? O.tarih(t.ihtiyac_tarihi) : '—'}</td>
-              <td>${O.rozet(DURUM[t.durum] || t.durum, DURUM_RENK[t.durum] || '#8C8C8C')}</td>
+              <td>${O.rozet(DURUM[t.durum] || t.durum, DURUM_RENK[t.durum] || '#656871')}</td>
               <td class="islem-td">
                 <button class="btn-ikon" title="Detay" onclick="SatinAlmaModul.detay(${t.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg></button>
                 ${y ? aksiyonlar(t) : ''}

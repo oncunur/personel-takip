@@ -6,7 +6,7 @@ const AracModul = (() => {
   let arama = '', filtreDurum = '', filtreGiderTur = '';
 
   const DURUM = { aktif: 'Aktif', bakimda: 'Bakımda', satildi: 'Satıldı', pasif: 'Pasif' };
-  const DURUM_RENK = { aktif: '#52C41A', bakimda: '#FAAD14', satildi: '#BFBFBF', pasif: '#BFBFBF' };
+  const DURUM_RENK = { aktif: '#00802F', bakimda: '#855900', satildi: '#8C8C94', pasif: '#8C8C94' };
   const YAKIT = { benzin: 'Benzin', dizel: 'Dizel', lpg: 'LPG', elektrik: 'Elektrik', hibrit: 'Hibrit' };
   const GIDER_TUR = {
     yakit: 'Yakıt', bakim: 'Bakım', lastik: 'Lastik', sigorta: 'Sigorta',
@@ -25,9 +25,9 @@ const AracModul = (() => {
     O.icerik(`
       ${O.statGrid([
         { label: 'Araç', deger: ozet.arac_sayisi, alt: `${ozet.atanan} atanmış · ${ozet.bosta} boşta` },
-        { label: 'Bakımda', deger: ozet.bakimda, alt: 'serviste', renk: ozet.bakimda ? '#FAAD14' : '#52C41A' },
-        { label: 'Yıllık Gider', deger: O.tl(ozet.yillik_gider), alt: 'yakıt, bakım, ceza dahil', renk: '#722ED1' },
-        { label: 'Evrak Uyarısı', deger: uyarilar.length, alt: '30 gün içinde dolan', renk: uyarilar.length ? '#FF4D4F' : '#52C41A' },
+        { label: 'Bakımda', deger: ozet.bakimda, alt: 'serviste', renk: ozet.bakimda ? '#855900' : '#00802F' },
+        { label: 'Yıllık Gider', deger: O.tl(ozet.yillik_gider), alt: 'yakıt, bakım, ceza dahil', renk: '#006CE0' },
+        { label: 'Evrak Uyarısı', deger: uyarilar.length, alt: '30 gün içinde dolan', renk: uyarilar.length ? '#DB0000' : '#00802F' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -80,7 +80,7 @@ const AracModul = (() => {
               <td>${a.surucu ? `<strong>${O.kacir(a.surucu)}</strong>` : '<span style="color:var(--gray-400)">Boşta</span>'}</td>
               <td>${a.muayene_tarihi ? O.kalanRozet(a.muayene_kalan) : '<span style="color:var(--gray-400)">—</span>'}</td>
               <td>${a.sigorta_bitis ? O.kalanRozet(a.sigorta_kalan) : '<span style="color:var(--gray-400)">—</span>'}</td>
-              <td>${O.rozet(DURUM[a.durum] || a.durum, DURUM_RENK[a.durum] || '#8C8C8C')}</td>
+              <td>${O.rozet(DURUM[a.durum] || a.durum, DURUM_RENK[a.durum] || '#656871')}</td>
               <td class="islem-td">
                 <button class="btn-ikon" title="Detay" onclick="AracModul.detay(${a.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg></button>
                 ${y ? (a.atama_id
@@ -263,7 +263,7 @@ const AracModul = (() => {
           <div class="detay-satir"><span>Yakıt</span><strong>${YAKIT[d.yakit_tur] || '—'}</strong></div>
           <div class="detay-satir"><span>KM</span><strong>${O.sayi(d.km)} km</strong></div>
           <div class="detay-satir"><span>Sürücü</span><strong>${O.kacir(d.surucu || 'Boşta')}</strong></div>
-          <div class="detay-satir"><span>Durum</span>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#8C8C8C')}</div>
+          <div class="detay-satir"><span>Durum</span>${O.rozet(DURUM[d.durum] || d.durum, DURUM_RENK[d.durum] || '#656871')}</div>
           <div class="detay-satir"><span>Muayene</span><strong>${O.tarih(d.muayene_tarihi)}</strong></div>
           <div class="detay-satir"><span>Sigorta</span><strong>${O.tarih(d.sigorta_bitis)}</strong></div>
           <div class="detay-satir"><span>Kasko</span><strong>${O.tarih(d.kasko_bitis)}</strong></div>

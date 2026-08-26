@@ -4,7 +4,7 @@ const BordroModul = (() => {
   let personeller = [];
   let bordrolar = [];
 
-  const DURUM_RENK   = { taslak:'#FAAD14', onaylandi:'#52C41A', odendi:'#1677FF' };
+  const DURUM_RENK   = { taslak:'#855900', onaylandi:'#00802F', odendi:'#006CE0' };
   const DURUM_ETIKET = { taslak:'Taslak', onaylandi:'Onaylandı', odendi:'Ödendi' };
 
 
@@ -46,7 +46,7 @@ const BordroModul = (() => {
         </td>
         <td style="font-size:13px">${AYLAR[b.ay-1]} ${b.yil}</td>
         <td style="font-size:13px">${tl(b.baz_maas)}</td>
-        <td style="font-size:13px;color:#52C41A;font-weight:600">${tl(b.brut_maas)}</td>
+        <td style="font-size:13px;color:#00802F;font-weight:600">${tl(b.brut_maas)}</td>
         <td>
           <div style="font-size:12px;color:var(--gray-500)">SGK: ${tl(b.sgk_isci)}</div>
           <div style="font-size:12px;color:var(--gray-500)">GV: ${tl(b.gelir_vergisi)}</div>
@@ -61,11 +61,11 @@ const BordroModul = (() => {
           </button>
           ${b.durum==='taslak' ? `
           <button class="btn-ikon" onclick="BordroModul.onayla(${b.id})" title="Onayla">
-            <svg viewBox="0 0 20 20" fill="currentColor" style="color:#52C41A"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor" style="color:#00802F"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
           </button>` : ''}
           ${b.durum==='onaylandi' ? `
           <button class="btn-ikon" onclick="BordroModul.odendi(${b.id})" title="Ödendi İşaretle">
-            <svg viewBox="0 0 20 20" fill="currentColor" style="color:#1677FF"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor" style="color:#006CE0"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
           </button>` : ''}
           ${b.durum!=='odendi' ? `
           <button class="btn-ikon btn-sil" onclick="BordroModul.sil(${b.id})" title="Sil">
@@ -279,11 +279,11 @@ const BordroModul = (() => {
           <div class="detay-satir"><span>Fazla Mesai Ücreti</span><strong>${tl(b.fazla_mesai_ucr)}</strong></div>
           <div class="detay-satir"><span>Prim</span><strong>${tl(b.prim)}</strong></div>
           <div class="detay-satir"><span>Diğer Eklemeler</span><strong>${tl(b.diger_eklemeler)}</strong></div>
-          <div class="detay-satir" style="font-weight:700"><span>Brüt Maaş</span><strong style="color:#52C41A">${tl(b.brut_maas)}</strong></div>
-          <div class="detay-satir"><span>SGK İşçi (%14)</span><span style="color:#FF4D4F">- ${tl(b.sgk_isci)}</span></div>
-          <div class="detay-satir"><span>İşsizlik (%1)</span><span style="color:#FF4D4F">- ${tl(b.issizlik_isci)}</span></div>
-          <div class="detay-satir"><span>Gelir Vergisi</span><span style="color:#FF4D4F">- ${tl(b.gelir_vergisi)}</span></div>
-          <div class="detay-satir"><span>Damga Vergisi</span><span style="color:#FF4D4F">- ${tl(b.damga_vergisi)}</span></div>
+          <div class="detay-satir" style="font-weight:700"><span>Brüt Maaş</span><strong style="color:#00802F">${tl(b.brut_maas)}</strong></div>
+          <div class="detay-satir"><span>SGK İşçi (%14)</span><span style="color:#DB0000">- ${tl(b.sgk_isci)}</span></div>
+          <div class="detay-satir"><span>İşsizlik (%1)</span><span style="color:#DB0000">- ${tl(b.issizlik_isci)}</span></div>
+          <div class="detay-satir"><span>Gelir Vergisi</span><span style="color:#DB0000">- ${tl(b.gelir_vergisi)}</span></div>
+          <div class="detay-satir"><span>Damga Vergisi</span><span style="color:#DB0000">- ${tl(b.damga_vergisi)}</span></div>
           <div class="detay-satir" style="font-size:17px;font-weight:700"><span>Net Maaş</span><strong style="color:var(--primary)">${tl(b.net_maas)}</strong></div>
           <div class="detay-satir"><span>Çalışılan Gün</span><strong>${b.calisilan_gun}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${DURUM_RENK[b.durum]}22;color:${DURUM_RENK[b.durum]}">${DURUM_ETIKET[b.durum]}</span></div>
