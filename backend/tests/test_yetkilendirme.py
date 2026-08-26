@@ -147,6 +147,21 @@ def test_baskasinin_izin_bakiyesi_sorgulanamaz(client, token, kullanici_olustur,
     assert r.status_code == 403
 
 
+def test_kendi_bakiyesini_sorgulayabilir(client, token, kullanici_olustur, veri):
+    kullanici_olustur("mehmet", models.Rol.personel, email="mehmet@sirket.com")
+    r = client.get("/izin/bakiyem", headers=token("mehmet"))
+    assert r.status_code == 200
+    assert r.json()["hak"] == 14
+
+
+def test_personel_kaydi_olmayan_bos_bakiye_alir(client, token, kullanici_olustur, veri):
+    """Personel kaydı olmayan hesap, başkasının bakiyesini görmemeli."""
+    kullanici_olustur("ayse", models.Rol.personel)
+    r = client.get("/izin/bakiyem", headers=token("ayse"))
+    assert r.status_code == 200
+    assert r.json()["kalan"] is None
+
+
 # ─── Aylık özet ──────────────────────────────────────────────────────
 
 def test_personel_rolu_aylik_ozeti_goremez(client, token, kullanici_olustur, veri):

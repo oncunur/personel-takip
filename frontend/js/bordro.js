@@ -17,7 +17,10 @@ const BordroModul = (() => {
         ...opts, headers: { Authorization:`Bearer ${token}`, 'Content-Type':'application/json', ...(opts.headers||{}) },
         signal: AbortSignal.timeout(4000),
       });
-      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Hata'); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(hataMetni(e));
+      }
       if (res.status === 204) return { _bos: true };
       return res.json();
     } catch(e) {

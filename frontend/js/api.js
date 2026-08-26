@@ -1,3 +1,18 @@
+// FastAPI hata govdesini okunabilir metne cevirir. Dogrulama hatalarinda
+// (422) detail bir dizidir; duz metne cevrilmezse "[object Object]" gorunur.
+function hataMetni(govde, varsayilan = 'İşlem başarısız') {
+  const d = govde && govde.detail;
+  if (!d) return varsayilan;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    const mesajlar = d
+      .map(x => (x && x.msg ? String(x.msg).replace(/^(Value error|Assertion failed),\s*/, '') : null))
+      .filter(Boolean);
+    if (mesajlar.length) return [...new Set(mesajlar)].join(' · ');
+  }
+  return varsayilan;
+}
+
 const API_URL = 'http://localhost:8000';
 
 const api = {
@@ -20,7 +35,7 @@ const api = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Giriş başarısız');
+      throw new Error(hataMetni(err, 'Giriş başarısız'));
     }
     return res.json();
   },

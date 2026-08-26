@@ -1,14 +1,17 @@
 // Yalnızca yöneticilerin erişebildiği sayfalar. Backend bu uçları 403 ile
 // koruyor; menüden gizlemek kullanıcıya boş/hatalı ekran göstermeyi önler.
 const YONETICI_SAYFALARI = ['bordro', 'ozet', 'raporlar'];
+// Kullanıcı yönetimi yalnızca admin rolüne açık.
+const ADMIN_SAYFALARI = ['kullanicilar'];
 
 function menuyuRoleGoreAyarla(kullanici) {
   const yonetici = ['admin', 'yonetici'].includes(kullanici.rol);
-  if (yonetici) return;
+  const admin = kullanici.rol === 'admin';
   document.querySelectorAll('.nav-item').forEach(item => {
-    if (YONETICI_SAYFALARI.includes(item.dataset.page)) {
-      item.classList.add('gizli');
-    }
+    const sayfa = item.dataset.page;
+    const gizle = (!yonetici && YONETICI_SAYFALARI.includes(sayfa))
+               || (!admin && ADMIN_SAYFALARI.includes(sayfa));
+    if (gizle) item.classList.add('gizli');
   });
 }
 
@@ -145,6 +148,7 @@ const SAYFALAR = {
   satinalma:  () => SatinAlmaModul.yukle(),
   stok:       () => StokModul.yukle(),
   ziyaretci:  () => ZiyaretciModul.yukle(),
+  kullanicilar: () => KullaniciModul.yukle(),
 };
 
 // Modül yüklenirken oluşan hatayı içerik alanında gösterir. Backend

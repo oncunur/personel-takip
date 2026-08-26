@@ -185,6 +185,47 @@ def izin_iptal(
     db.commit()
 
 
+YILLIK_IZIN_HAKKI = 14
+
+
+def _bakiye_hesapla(db: Session, personel_id: int, yil: Optional[int]) -> dict:
+    """Bir personelin yıllık izin bakiyesini hesaplar."""
+    hedef_yil = yil or date.today().year
+    kullanilan_gun = sum(
+        t.gun_sayisi
+        for t in db.query(models.IzinTalep).filter(
+            models.IzinTalep.personel_id == personel_id,
+            models.IzinTalep.tur == models.IzinTur.yillik,
+            models.IzinTalep.durum == models.IzinDurum.onaylandi,
+            models.IzinTalep.baslangic_tarihi >= date(hedef_yil, 1, 1),
+            models.IzinTalep.baslangic_tarihi <= date(hedef_yil, 12, 31),
+        ).all()
+    )
+    return {
+        "yil": hedef_yil,
+        "hak": YILLIK_IZIN_HAKKI,
+        "kullanilan": kullanilan_gun,
+        "kalan": max(0, YILLIK_IZIN_HAKKI - kullanilan_gun),
+    }
+
+
+@router.get("/bakiyem")
+def kendi_bakiyem(
+    yil: int = Query(default=None),
+    db: Session = Depends(get_db),
+    kullanici: models.Kullanici = Depends(aktif_kullanici),
+):
+    """Giriş yapan kullanıcının kendi izin bakiyesi.
+
+    Kullanıcının Personel kaydı yoksa (ör. yalnızca sistem hesabı olan
+    bir yönetici) bakiye yerine None döner.
+    """
+    kendi = kullanici_personeli(db, kullanici)
+    if kendi is None:
+        return {"yil": yil or date.today().year, "hak": None, "kullanilan": None, "kalan": None}
+    return _bakiye_hesapla(db, kendi.id, yil)
+
+
 @router.get("/bakiye/{personel_id}")
 def izin_bakiye(
     personel_id: int,
@@ -198,19 +239,4 @@ def izin_bakiye(
         if kendi is None or personel_id != kendi.id:
             raise HTTPException(status_code=403, detail="Bu bilgiyi görme yetkiniz yok")
 
-    hedef_yil = yil or date.today().year
-    kullanilan = db.query(models.IzinTalep).filter(
-        models.IzinTalep.personel_id == personel_id,
-        models.IzinTalep.tur == models.IzinTur.yillik,
-        models.IzinTalep.durum == models.IzinDurum.onaylandi,
-        models.IzinTalep.baslangic_tarihi >= date(hedef_yil, 1, 1),
-        models.IzinTalep.baslangic_tarihi <= date(hedef_yil, 12, 31),
-    ).all()
-    kullanilan_gun = sum(t.gun_sayisi for t in kullanilan)
-    hak = 14
-    return {
-        "yil": hedef_yil,
-        "hak": hak,
-        "kullanilan": kullanilan_gun,
-        "kalan": max(0, hak - kullanilan_gun),
-    }
+    return _bakiye_hesapla(db, personel_id, yil)

@@ -9,11 +9,6 @@ const StokModul = (() => {
   const HAREKET_RENK = { giris: '#22C55E', cikis: '#4F6EF7', sayim: '#8B5CF6', fire: '#EF4444' };
 
 
-  function guncelleTuretilen(u) {
-    u.kritik_mi = Number(u.mevcut_miktar) <= Number(u.kritik_seviye || 0);
-    u.toplam_deger = Number(u.mevcut_miktar) * Number(u.birim_fiyat || 0);
-  }
-
   async function veriYukle() {
     const [ud, hd, od] = await Promise.all([O.api('/stok'), O.api('/stok/hareketler'), O.api('/stok/ozet')]);
     urunler = ud.veriler; hareketler = hd.veriler; ozet = od;

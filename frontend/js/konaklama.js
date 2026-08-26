@@ -341,5 +341,14 @@ const KonaklamaModul = (() => {
         render();
       } catch (err) { alert(err.message); }
     },
+
+    async giderSil(id) {
+      if (!confirm('Gider kaydı silinsin mi?')) return;
+      try {
+        await O.api(`/konaklama/giderler/${id}`, { method: 'DELETE' });
+        await veriYukle();
+        render();
+      } catch (err) { alert(err.message); }
+    },
   };
 })();

@@ -27,7 +27,7 @@ const OzetModul = (() => {
     }
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
-      throw new Error(e.detail || 'İşlem başarısız');
+      throw new Error(hataMetni(e));
     }
     return res.json();
   }
