@@ -1,0 +1,176 @@
+#login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1f3c 0%, #2d3561 50%, #1a1f3c 100%);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+#login-page::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(79,110,247,.15) 0%, transparent 70%);
+  top: -200px; right: -100px;
+  pointer-events: none;
+}
+#login-page::after {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(108,139,255,.12) 0%, transparent 70%);
+  bottom: -100px; left: -100px;
+  pointer-events: none;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  width: 100%;
+  box-shadow: 0 25px 50px rgba(0,0,0,.4);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo {
+  width: 64px; height: 64px;
+  margin: 0 auto 16px;
+}
+.logo svg { width: 100%; height: 100%; }
+
+.login-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 6px;
+}
+.login-header p {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.login-form { display: flex; flex-direction: column; gap: 18px; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px; height: 16px;
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 11px 12px 11px 38px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--gray-900);
+  background: var(--gray-50);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  outline: none;
+}
+.input-wrapper input:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(79,110,247,.12);
+}
+.input-wrapper input::placeholder { color: var(--gray-400); }
+
+.sifre-goster {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--gray-400);
+  display: flex;
+  align-items: center;
+  transition: color .15s;
+}
+.sifre-goster:hover { color: var(--primary); }
+.sifre-goster svg { width: 17px; height: 17px; }
+
+.hata-mesaji {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, transform .1s, box-shadow .2s;
+  box-shadow: 0 4px 12px rgba(79,110,247,.35);
+  margin-top: 4px;
+}
+.btn-primary:hover { background: var(--primary-dark); box-shadow: 0 6px 16px rgba(79,110,247,.4); }
+.btn-primary:active { transform: scale(.98); }
+.btn-primary:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+
+.login-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray-400);
+  border-top: 1px solid var(--gray-100);
+  padding-top: 18px;
+}
+
+.bilgi-kart {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 12px;
+  padding: 14px 18px;
+  color: rgba(255,255,255,.8);
+  font-size: 13px;
+  line-height: 1.8;
+  backdrop-filter: blur(10px);
+  width: 100%;
+}
+.bilgi-kart h3 { color: white; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; opacity: .7; }
+.bilgi-kart strong { color: white; }

@@ -1,0 +1,152 @@
+function rolBadge(rol) {
+  return `<span class="rol-badge rol-${rol}">${rol.charAt(0).toUpperCase() + rol.slice(1)}</span>`;
+}
+
+function dashboardYukle(kullanici) {
+  // Sidebar kullanıcı bilgisi
+  document.getElementById('sidebar-kullanici').innerHTML = `
+    <strong>${kullanici.ad} ${kullanici.soyad}</strong>
+    ${rolBadge(kullanici.rol)}
+  `;
+  document.getElementById('header-kullanici').innerHTML = `
+    <span style="color:var(--gray-500)">Hoş geldiniz,</span>
+    <strong style="color:var(--gray-800)">${kullanici.ad}</strong>
+    ${rolBadge(kullanici.rol)}
+  `;
+
+  anasayfaIcerigi(kullanici);
+
+  // Nav tıklamaları
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+      const sayfa = item.dataset.page;
+      document.getElementById('sayfa-baslik').textContent = item.querySelector('span').textContent;
+      sayfaIcerigi(sayfa, kullanici);
+    });
+  });
+}
+
+// Sidebar'daki bir modüle programatik geçiş (anasayfadaki uyarı kartlarından)
+function sayfayaGit(sayfa) {
+  const item = document.querySelector(`.nav-item[data-page="${sayfa}"]`);
+  if (item) item.click();
+}
+
+function anasayfaIcerigi(kullanici) {
+  document.getElementById('content-area').innerHTML = `
+    <div class="hosgeldin-banner">
+      <h3>Merhaba, ${kullanici.ad}! 👋</h3>
+      <p>Personel ve İdari İşler Sistemi'ne hoş geldiniz. Sol menüden modüllere erişebilirsiniz.</p>
+    </div>
+    <div id="anasayfa-ozet">
+      <div class="idari-stat-grid">
+        ${Array(4).fill('<div class="idari-stat"><span class="idari-stat-label">Yükleniyor</span><strong class="idari-stat-deger">—</strong></div>').join('')}
+      </div>
+    </div>
+  `;
+  anasayfaOzetYukle(kullanici);
+}
+
+// Personel + idari modüllerin özetlerini tek ekranda toplar.
+// Backend kapalıysa modüller demo verisiyle çalıştığı için burada sadece "—" gösterilir.
+async function anasayfaOzetYukle(kullanici) {
+  const O = Ortak;
+
+  const [genel, konak, dmb, arc, evr, sat, stk] = await Promise.all([
+    O.api('/rapor/genel'), O.api('/konaklama/ozet'), O.api('/demirbas/ozet'),
+    O.api('/arac/ozet'), O.api('/evrak/ozet'), O.api('/satinalma/ozet'), O.api('/stok/ozet'),
+  ]);
+
+  const hedef = document.getElementById('anasayfa-ozet');
+  if (!hedef) return;
+
+  if (!genel) {
+    hedef.innerHTML = `
+      ${O.demoUyari(true)}
+      <div class="panel">
+        <div class="panel-header">Sistem Bilgisi</div>
+        <div style="padding:20px;font-size:13px;color:var(--gray-500);line-height:2">
+          <div>Backend kapalı — modüller demo verisiyle çalışıyor.</div>
+          <div style="margin-top:8px">Rol: ${rolBadge(kullanici.rol)}</div>
+          <div>E-posta: <strong style="color:var(--gray-700)">${kullanici.email}</strong></div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Aksiyon gerektiren her şey tek listede toplanır
+  const isler = [];
+  if (genel.bekleyen_izin) isler.push({ sayfa: 'izin', ad: 'Onay bekleyen izin talebi', sayi: genel.bekleyen_izin });
+  if (sat && sat.beklemede) isler.push({ sayfa: 'satinalma', ad: 'Onay bekleyen satın alma talebi', sayi: sat.beklemede });
+  if (stk && stk.kritik_sayisi) isler.push({ sayfa: 'stok', ad: 'Kritik seviyedeki stok kalemi', sayi: stk.kritik_sayisi });
+  if (arc && arc.uyarilar && arc.uyarilar.length) isler.push({ sayfa: 'arac', ad: 'Muayene / sigorta süresi dolan araç', sayi: arc.uyarilar.length });
+  if (evr && evr.sozlesme_uyarilari && evr.sozlesme_uyarilari.length) isler.push({ sayfa: 'evrak', ad: 'Süresi yaklaşan sözleşme', sayi: evr.sozlesme_uyarilari.length });
+  if (konak && konak.sozlesme_uyarilari && konak.sozlesme_uyarilari.length) isler.push({ sayfa: 'konaklama', ad: 'Süresi yaklaşan kira sözleşmesi', sayi: konak.sozlesme_uyarilari.length });
+  if (konak && konak.odenmemis_gider_sayisi) isler.push({ sayfa: 'konaklama', ad: 'Ödenmemiş konut gideri', sayi: konak.odenmemis_gider_sayisi });
+
+  hedef.innerHTML = `
+    ${isler.length ? `<div class="panel uyari-panel">
+      <div class="panel-header">Bekleyen İşler</div>
+      ${isler.map(i => `<div class="uyari-satir" style="cursor:pointer" onclick="sayfayaGit('${i.sayfa}')">
+        <span class="uyari-ad">${i.ad}</span>
+        <span class="uyari-alt">${O.rozet(i.sayi + ' adet', i.sayi > 3 ? '#EF4444' : '#F59E0B')}</span>
+      </div>`).join('')}
+    </div>` : `<div class="panel uyari-panel"><div class="uyari-satir">
+        <span style="color:var(--gray-500)">Bekleyen iş yok — her şey güncel.</span></div></div>`}
+
+    <div class="panel-header" style="background:none;padding-left:0;margin-bottom:8px">Personel</div>
+    ${O.statGrid([
+      { label: 'Toplam Personel', deger: genel.toplam_personel, alt: `${genel.toplam_departman} departman` },
+      { label: 'Aktif', deger: genel.aktif_personel, alt: `${genel.izinli_personel} izinli`, renk: '#22C55E' },
+      { label: 'Bekleyen İzin', deger: genel.bekleyen_izin, alt: 'onay bekliyor', renk: genel.bekleyen_izin ? '#F59E0B' : '#22C55E' },
+      { label: 'Bu Ay İzin', deger: genel.bu_ay_izin, alt: 'onaylanmış', renk: '#8B5CF6' },
+    ])}
+
+    <div class="panel-header" style="background:none;padding-left:0;margin:16px 0 8px">İdari İşler</div>
+    ${O.statGrid([
+      { label: 'Konaklama', deger: `${konak ? konak.dolu_yatak : 0}/${konak ? konak.toplam_kapasite : 0}`, alt: `${konak ? konak.konut_sayisi : 0} konut · ${O.tl(konak ? konak.aylik_kira_toplam : 0)} kira` },
+      { label: 'Demirbaş', deger: dmb ? dmb.toplam : 0, alt: `${dmb ? dmb.zimmetli : 0} zimmetli · ${O.tl(dmb ? dmb.toplam_deger : 0)}`, renk: '#4F6EF7' },
+      { label: 'Araç', deger: arc ? arc.arac_sayisi : 0, alt: `${arc ? arc.atanan : 0} atanmış · ${O.tl(arc ? arc.yillik_gider : 0)} gider`, renk: '#8B5CF6' },
+      { label: 'Stok Değeri', deger: O.tl(stk ? stk.toplam_deger : 0), alt: `${stk ? stk.urun_sayisi : 0} kalem`, renk: '#22C55E' },
+    ])}
+
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-header">Hesap Bilgisi</div>
+      <div style="padding:20px;font-size:13px;color:var(--gray-500);line-height:2">
+        <div>Rol: ${rolBadge(kullanici.rol)}</div>
+        <div style="margin-top:8px">E-posta: <strong style="color:var(--gray-700)">${kullanici.email}</strong></div>
+        <div>Kullanıcı Adı: <strong style="color:var(--gray-700)">${kullanici.kullanici_adi}</strong></div>
+      </div>
+    </div>`;
+}
+
+// Sayfa yükleyiciler — her modül kendi durumunu yönetir
+const SAYFALAR = {
+  personel:   () => PersonelModul.yukle(),
+  izin:       () => IzinModul.yukle(),
+  puantaj:    () => PuantajModul.yukle(),
+  bordro:     () => BordroModul.yukle(),
+  raporlar:   () => RaporModul.yukle(),
+  ozet:       () => OzetModul.yukle(),
+  konaklama:  () => KonaklamaModul.yukle(),
+  demirbas:   () => DemirbasModul.yukle(),
+  arac:       () => AracModul.yukle(),
+  evrak:      () => EvrakModul.yukle(),
+  satinalma:  () => SatinAlmaModul.yukle(),
+  stok:       () => StokModul.yukle(),
+  ziyaretci:  () => ZiyaretciModul.yukle(),
+};
+
+function sayfaIcerigi(sayfa, kullanici) {
+  if (sayfa === 'anasayfa') { anasayfaIcerigi(kullanici); return; }
+  const yukleyici = SAYFALAR[sayfa];
+  if (yukleyici) { yukleyici(); return; }
+  document.getElementById('content-area').innerHTML = `
+    <div class="sayfa-placeholder">
+      <h3>${sayfa}</h3>
+      <p>Bu modül yakında eklenecek.</p>
+    </div>`;
+}

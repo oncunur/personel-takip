@@ -1,0 +1,23 @@
+# Veritabanı (gerçek personel verisi içerir — repoya girmemeli)
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Ortam değişkenleri
+.env
+.env.*
+
+# Node
+node_modules/
+
+# macOS / editör
+.DS_Store
+.idea/
+.vscode/
