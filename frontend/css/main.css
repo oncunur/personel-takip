@@ -64,7 +64,22 @@
   --radius-sm: 4px;                /* border-radius-badge */
   --radius-lg: 16px;               /* border-radius-container */
   --radius-button: 20px;           /* border-radius-button — hap */
-  --control-h: 32px;
+  --control-h: 28px;   /* size-vertical-input, compact */
+
+  /* ── Compact yoğunluk ölçeği ────────────────────────────────
+     Cloudscape'in "compact" density değerleri (space-scaled-*).
+     Comfortable karşılıkları yorumda gösterilmiştir. */
+  --sp-xxxs: 0px;
+  --sp-xxs: 2px;    /* comfortable 4px  */
+  --sp-xs:  4px;    /* comfortable 8px  */
+  --sp-s:   8px;    /* comfortable 12px */
+  --sp-m:   12px;   /* comfortable 16px */
+  --sp-l:   16px;   /* comfortable 20px */
+  --sp-xl:  20px;   /* comfortable 24px */
+  --sp-xxl: 24px;   /* comfortable 32px */
+  --sp-button-x: 16px;   /* space-button-horizontal */
+  --sp-field-y:  3px;    /* space-field-vertical */
+  --nav-item-h:  24px;   /* size-side-navigation-item-height */
 
   /* Gölgeler — shadow-container-active */
   --shadow: none;
@@ -79,7 +94,7 @@ html, body {
   background: var(--bg-layout);
   color: var(--text);
   font-size: 14px;
-  line-height: 1.5714285714285714;
+  line-height: 20px;   /* line-height-body-m */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -121,21 +136,22 @@ html, body {
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 12px;
+  gap: var(--sp-s);
+  padding: var(--sp-s) var(--sp-m);
   border-bottom: 1px solid var(--border-split);
 }
 .sidebar-header svg { width: 26px; height: 26px; flex-shrink: 0; }
 .sidebar-header span { color: var(--text); font-weight: 700; font-size: 14px; letter-spacing: -.1px; }
 
-.sidebar-nav { flex: 1; padding: 8px 6px; display: flex; flex-direction: column; gap: 1px; }
+.sidebar-nav { flex: 1; padding: var(--sp-xs); display: flex; flex-direction: column; gap: 0; }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 6px;
+  gap: var(--sp-s);
+  padding: var(--sp-xxs) var(--sp-s);
+  min-height: var(--nav-item-h);
+  border-radius: var(--radius);
   color: var(--sider-item);
   text-decoration: none;
   transition: background .2s, color .2s;
@@ -147,10 +163,10 @@ html, body {
 .nav-item:hover { background: var(--sider-item-hover); color: var(--text); }
 .nav-item.active { background: transparent; color: var(--primary); font-weight: 700; }
 
-.sidebar-footer { padding: 8px 6px; border-top: 1px solid var(--border-split); }
+.sidebar-footer { padding: 8px 4px; border-top: 1px solid var(--border-split); }
 
 .kullanici-bilgi {
-  padding: 6px 10px;
+  padding: 4px 8px;
   margin-bottom: 4px;
   color: var(--text-2);
   font-size: 12px;
@@ -158,7 +174,7 @@ html, body {
 .kullanici-bilgi strong { display: block; color: var(--text); font-size: 14px; margin-bottom: 2px; }
 .rol-badge {
   display: inline-block;
-  padding: 1px 7px;
+  padding: 1px 4px;
   border-radius: 99px;
   font-size: 12px;
   font-weight: 700;
@@ -173,8 +189,8 @@ html, body {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
+  gap: 4px;
+  padding: 4px 8px;
   border-radius: 6px;
   background: transparent;
   border: none;
@@ -192,7 +208,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 20px;
+  padding: 8px 20px;
   background: white;
   border-bottom: 1px solid var(--gray-200);
   position: sticky;
@@ -204,25 +220,25 @@ html, body {
 .header-kullanici {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   font-size: 12px;
   color: var(--gray-500);
 }
 
-#content-area { padding: 18px 20px; flex: 1; }
+#content-area { padding: var(--sp-m) var(--sp-l); flex: 1; }
 
 /* Dashboard kartları */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: var(--sp-s);
+  margin-bottom: var(--sp-m);
 }
 
 .stat-card {
   background: white;
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 12px 16px;
   box-shadow: var(--shadow);
   border: 1px solid var(--gray-100);
 }
@@ -230,7 +246,7 @@ html, body {
   width: 34px; height: 34px;
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .stat-card .stat-icon svg { width: 18px; height: 18px; }
 .stat-card h3 { font-size: 24px; font-weight: 700; color: var(--gray-900); margin-bottom: 2px; }
@@ -254,7 +270,7 @@ html, body {
   overflow: hidden;
 }
 .panel-header {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--gray-100);
   font-weight: 600;
   font-size: 14px;
@@ -266,11 +282,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.arama-grup { display: flex; gap: 7px; flex-wrap: wrap; flex: 1; }
+.arama-grup { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
 .arama-input-wrap {
   position: relative;
   display: flex;
@@ -282,7 +298,7 @@ html, body {
 .arama-input-wrap input {
   width: 100%;
   height: var(--control-h);
-  padding: 4px 11px 4px 30px;
+  padding: 4px 8px 4px 24px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
@@ -296,7 +312,7 @@ html, body {
 .arama-input-wrap input:focus { border-color: var(--primary); }
 .filtre-select {
   height: var(--control-h);
-  padding: 0 11px;
+  padding: 0 8px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
@@ -312,9 +328,9 @@ html, body {
 .btn-yeni {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   height: var(--control-h);
-  padding: 0 20px;
+  padding: 0 var(--sp-button-x);
   background: var(--primary);
   color: #FFFFFF;
   border: 2px solid var(--primary);
@@ -332,7 +348,7 @@ html, body {
 
 .personel-tablo { width: 100%; border-collapse: collapse; }
 .personel-tablo thead th {
-  padding: 8px 20px;
+  padding: var(--sp-xs) var(--sp-xl);
   text-align: left;
   font-size: 14px;
   font-weight: 700;
@@ -347,7 +363,7 @@ html, body {
   transition: background .15s;
 }
 .personel-tablo tbody tr:hover { background: var(--gray-50); }
-.personel-tablo td { padding: 10px 20px; font-size: 14px; color: var(--text); vertical-align: middle; }
+.personel-tablo td { padding: var(--sp-xs) var(--sp-xl); font-size: 14px; color: var(--text); vertical-align: middle; }
 .personel-tablo tbody tr:last-child { border-bottom: none; }
 
 .personel-avatar-ad { display: flex; align-items: center; gap: 8px; }
@@ -416,7 +432,7 @@ html, body {
 }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--gray-100);
   position: sticky; top: 0; background: white; z-index: 1;
 }
@@ -431,13 +447,13 @@ html, body {
 }
 .modal-kapat:hover { background: var(--gray-200); }
 
-.modal-form { padding: 14px 18px; }
-.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-.modal-form .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.modal-form { padding: 12px 16px; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.modal-form .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
 .modal-form label { font-size: 14px; font-weight: 700; color: var(--text); }
 .modal-form input, .modal-form select, .modal-form textarea {
   min-height: var(--control-h);
-  padding: 4px 11px;
+  padding: 4px 8px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
@@ -460,7 +476,7 @@ html, body {
   border-top: 1px solid var(--gray-100);
 }
 .btn-iptal {
-  height: var(--control-h); padding: 0 20px;
+  height: var(--control-h); padding: 0 var(--sp-button-x);
   border: 2px solid var(--primary); background: transparent;
   border-radius: var(--radius-button); cursor: pointer; font-size: 14px;
   color: var(--primary); font-weight: 700;
@@ -470,7 +486,7 @@ html, body {
 /* Cloudscape'te ikincil buton mavi çerçeveli ve saydamdır */
 .btn-iptal:hover { background: var(--primary-light); }
 .btn-kaydet {
-  height: var(--control-h); padding: 0 20px;
+  height: var(--control-h); padding: 0 var(--sp-button-x);
   background: var(--primary); color: #FFFFFF;
   border: 2px solid var(--primary); border-radius: var(--radius-button);
   cursor: pointer; font-size: 14px; font-weight: 700;
@@ -481,7 +497,7 @@ html, body {
 .btn-kaydet:active { background: var(--primary-dark); border-color: var(--primary-dark); }
 
 /* Detay görünümü */
-.detay-grid { padding: 14px 18px; display: flex; flex-direction: column; gap: 0; }
+.detay-grid { padding: 12px 16px; display: flex; flex-direction: column; gap: 0; }
 .detay-satir {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 0;
@@ -494,7 +510,7 @@ html, body {
 .detay-satir strong { color: var(--gray-900); text-align: right; }
 .detay-tam { flex-direction: column; align-items: flex-start; gap: 3px; }
 .detay-tam strong { text-align: left; }
-.detay-grid + .modal-footer { margin: 0 18px 14px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
+.detay-grid + .modal-footer { margin: 0 16px 12px; padding-top: 12px; border-top: 1px solid var(--gray-100); }
 
 /* ── İzin Modülü ─────────────────────────────────────────────────── */
 .izin-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
@@ -502,7 +518,7 @@ html, body {
 .izin-stat-kart {
   background: white;
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--gray-100);
   box-shadow: var(--shadow);
   display: flex; flex-direction: column; gap: 3px;
@@ -511,7 +527,7 @@ html, body {
 .stat-label { font-size: 12px; color: var(--gray-500); }
 .tur-badge {
   display: inline-block;
-  padding: 2px 7px;
+  padding: 2px 4px;
   border-radius: 99px;
   font-size: 12px;
   font-weight: 600;
@@ -544,17 +560,17 @@ html, body {
 .rapor-kartlar-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .rapor-kart {
   background: white;
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 12px 12px;
   border: 1px solid var(--gray-100);
   box-shadow: var(--shadow);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .rapor-kart-ikon {
   width: 36px; height: 36px;
@@ -577,8 +593,8 @@ html, body {
 .grafik-alan canvas { max-height: 210px; }
 
 .btn-export {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 11px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 8px;
   border: 1.5px solid var(--gray-200);
   background: white; border-radius: 6px;
   font-size: 12px; color: var(--gray-600);
@@ -592,9 +608,9 @@ html, body {
   color: #DB0000;
   border: 1px solid #DB0000;
   border-radius: 6px;
-  padding: 7px 10px;
+  padding: 4px 8px;
   font-size: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 @media (max-width: 700px) {
@@ -636,7 +652,7 @@ html, body {
   min-height: 260px;
   color: var(--gray-400);
   text-align: center;
-  gap: 10px;
+  gap: 8px;
 }
 .sayfa-placeholder svg { width: 40px; height: 40px; opacity: .35; }
 .sayfa-placeholder h3 { font-size: 16px; color: var(--gray-600); }
@@ -650,7 +666,7 @@ html, body {
   min-width: 900px;
 }
 .ozet-tablo th {
-  padding: 7px 10px;
+  padding: 4px 8px;
   text-align: center;
   font-weight: 600;
   font-size: 12px;
@@ -674,7 +690,7 @@ html, body {
 }
 .ozet-baslik-alt th { font-size: 12px; color: var(--gray-500); }
 .ozet-tablo td {
-  padding: 7px 10px;
+  padding: 4px 8px;
   border: 1px solid var(--gray-100);
   color: var(--gray-700);
   vertical-align: middle;
@@ -689,8 +705,8 @@ html, body {
 .ozet-toplam-satir td {
   background: var(--gray-50) !important;
   border-top: 2px solid var(--gray-200);
-  padding-top: 9px;
-  padding-bottom: 9px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -699,7 +715,7 @@ html, body {
 
 /* Sidebar grup başlığı */
 .nav-baslik {
-  padding: 14px 16px 6px;
+  padding: var(--sp-m) var(--sp-s) var(--sp-xxs);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -711,14 +727,14 @@ html, body {
 .idari-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--sp-s);
+  margin-bottom: var(--sp-m);
 }
 .idari-stat {
   background: var(--bg-container);
   border: none;
   border-radius: var(--radius-lg);
-  padding: 20px 24px;
+  padding: var(--sp-m) var(--sp-xl);
   box-shadow: var(--shadow-md);
 }
 /* Ant Design Statistic: küçük gri başlık, iri normal ağırlıkta değer */
@@ -731,15 +747,15 @@ html, body {
   display: flex;
   gap: 0;
   border-bottom: 1px solid var(--border-split);
-  margin-bottom: 16px;
+  margin-bottom: var(--sp-m);
   overflow-x: auto;
 }
 .idari-tab {
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
-  padding: 12px 0;
-  margin-right: 32px;
+  padding: var(--sp-s) 0;
+  margin-right: var(--sp-xxl);
   font-size: 14px;
   font-weight: 400;
   color: var(--text);
@@ -747,7 +763,7 @@ html, body {
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-family: inherit;
 }
 .idari-tab:hover { color: var(--primary-hover); }
@@ -756,7 +772,7 @@ html, body {
   background: var(--fill-tertiary);
   color: var(--text-2);
   border-radius: var(--radius-sm);
-  padding: 0 6px;
+  padding: 0 4px;
   font-size: 12px;
   font-weight: 400;
 }
@@ -779,7 +795,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--gray-100);
   font-size: 14px;
 }
@@ -793,24 +809,24 @@ html, body {
 /* Modal içi kalem tablosu (satın alma) */
 .kalem-tablo { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 8px; }
 .kalem-tablo th {
-  text-align: left; padding: 7px 8px; font-size: 12px;
+  text-align: left; padding: 4px 8px; font-size: 12px;
   color: var(--gray-500); text-transform: uppercase; letter-spacing: .04em;
   border-bottom: 1px solid var(--gray-200);
 }
-.kalem-tablo td { padding: 5px 6px; border-bottom: 1px solid var(--gray-100); }
+.kalem-tablo td { padding: 4px 4px; border-bottom: 1px solid var(--gray-100); }
 .kalem-tablo input, .kalem-tablo select {
-  width: 100%; padding: 6px 8px; border: 1px solid var(--gray-200);
+  width: 100%; padding: 4px 8px; border: 1px solid var(--gray-200);
   border-radius: 6px; font-size: 14px; font-family: inherit;
 }
-.kalem-tablo tfoot td { font-weight: 700; color: var(--gray-800); border-bottom: none; padding-top: 10px; }
+.kalem-tablo tfoot td { font-weight: 700; color: var(--gray-800); border-bottom: none; padding-top: 8px; }
 .btn-kalem-ekle {
   background: var(--primary-light); color: var(--primary);
-  border: none; border-radius: 6px; padding: 7px 12px;
+  border: none; border-radius: 6px; padding: 4px 12px;
   font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
 }
 .btn-kalem-sil {
   background: none; border: none; color: var(--gray-400);
-  cursor: pointer; font-size: 16px; line-height: 1; padding: 4px 6px;
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 4px 4px;
 }
 .btn-kalem-sil:hover { color: var(--danger); }
 
@@ -841,14 +857,14 @@ html, body {
 /* Toplantı odası günlük şerit görünümü */
 .oda-satir { border-bottom: 1px solid var(--gray-100); padding: 12px 16px; }
 .oda-satir:last-child { border-bottom: none; }
-.oda-baslik { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.oda-baslik { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .oda-baslik strong { font-size: 14px; color: var(--gray-800); }
-.oda-serit { display: flex; gap: 6px; flex-wrap: wrap; }
+.oda-serit { display: flex; gap: 4px; flex-wrap: wrap; }
 .rez-blok {
   background: var(--primary-light);
   border-left: 3px solid var(--primary);
   border-radius: 4px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   font-size: 12px;
   min-width: 130px;
 }
