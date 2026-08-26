@@ -166,18 +166,38 @@ function sayfaHatasiGoster(sayfa, err) {
   if (btn) btn.addEventListener('click', () => sayfaIcerigi(sayfa, Auth.getKullanici()));
 }
 
+// Sayfa yüklemeleri sıraya alınır. Modüller içerik alanını kendileri
+// yazdığı için, iki yükleme aynı anda sürerse yavaş olan hızlının
+// ekranını eziyordu: Bordro'ya tıklandığı halde Personel içeriği
+// kalabiliyordu. Sıra + son-tıklama kontrolü bunu engeller.
+let sayfaSirasi = Promise.resolve();
+let istenenSayfa = 'anasayfa';
+
 function sayfaIcerigi(sayfa, kullanici) {
+  istenenSayfa = sayfa;
+  sayfaSirasi = sayfaSirasi.then(() => sayfaYukle(sayfa, kullanici));
+}
+
+function sayfaYukle(sayfa, kullanici) {
+  // Sıra beklerken daha yeni bir sayfaya tıklandıysa bunu atla.
+  if (sayfa !== istenenSayfa) return;
+
   if (sayfa === 'anasayfa') { anasayfaIcerigi(kullanici); return; }
+
   const yukleyici = SAYFALAR[sayfa];
-  if (yukleyici) {
-    Promise.resolve()
-      .then(yukleyici)
-      .catch(err => sayfaHatasiGoster(sayfa, err));
+  if (!yukleyici) {
+    document.getElementById('content-area').innerHTML = `
+      <div class="sayfa-placeholder">
+        <h3>${Ortak.kacir(sayfa)}</h3>
+        <p>Bu modül yakında eklenecek.</p>
+      </div>`;
     return;
   }
-  document.getElementById('content-area').innerHTML = `
-    <div class="sayfa-placeholder">
-      <h3>${sayfa}</h3>
-      <p>Bu modül yakında eklenecek.</p>
-    </div>`;
+
+  return Promise.resolve()
+    .then(yukleyici)
+    .catch(err => {
+      // Kullanıcı bu arada başka sayfaya geçtiyse hatayı gösterme.
+      if (sayfa === istenenSayfa) sayfaHatasiGoster(sayfa, err);
+    });
 }
