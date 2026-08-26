@@ -10,6 +10,9 @@ const PuantajModul = (() => {
   let filtreDepartman = '';
   let departmanlar = [];
   let cetvel = null;
+  // Mesai düzeni sunucudan gelir (08:00-19:00, günlük 10 saat)
+  let mesai = { baslangic: '08:00', bitis: '19:00', gunluk_saat: 10, mola_saat: 1 };
+  let saatGoster = false;   // hücrede kod yerine saat göster
 
   // Hücreye tıklandığında durumların izlediği sıra
   const DONGU = [null, 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil'];
@@ -49,7 +52,10 @@ const PuantajModul = (() => {
     const q = new URLSearchParams({ yil: secilenYil, ay: secilenAy });
     if (filtreDepartman) q.set('departman_id', filtreDepartman);
     cetvel = await apiFetch(`/puantaj/cetvel?${q}`);
+    if (cetvel.mesai) mesai = cetvel.mesai;
   }
+
+  const saatMetni = s => (s % 1 === 0 ? String(s) : s.toFixed(1).replace('.', ','));
 
   function gunBasligi(g) {
     const d = new Date(secilenYil, secilenAy - 1, g.gun);
@@ -65,10 +71,13 @@ const PuantajModul = (() => {
     const r = durum ? RENK[durum] : null;
     const stil = r ? `background:${r.zemin};color:${r.yazi}` : (g.hafta_sonu ? 'background:var(--gray-50)' : '');
     const baslik = durum ? METIN[durum] : (g.hafta_sonu ? 'Hafta sonu' : 'Kayıt yok');
-    return `<td class="pt-hucre${g.hafta_sonu ? ' pt-hs' : ''}" style="${stil}"
-      title="${satir.ad_soyad} · ${g.gun} ${AYLAR[secilenAy-1]} · ${baslik}"
+    const saatBilgi = h.saat ? ` · ${saatMetni(h.saat)} saat` : '';
+    const saatAralik = (h.giris_saati && h.cikis_saati) ? ` · ${h.giris_saati}-${h.cikis_saati}` : '';
+    const icerik = durum ? (saatGoster ? (h.saat ? saatMetni(h.saat) : '') : KOD[durum]) : '';
+    return `<td class="pt-hucre${g.hafta_sonu ? ' pt-hs' : ''}${saatGoster ? ' pt-saat-modu' : ''}" style="${stil}"
+      title="${satir.ad_soyad} · ${g.gun} ${AYLAR[secilenAy-1]} · ${baslik}${saatAralik}${saatBilgi}"
       data-pid="${satir.personel_id}" data-gun="${g.gun}" data-durum="${durum || ''}"
-      >${durum ? KOD[durum] : ''}</td>`;
+      >${icerik}</td>`;
   }
 
   function render() {
@@ -88,6 +97,9 @@ const PuantajModul = (() => {
         </div>
         <div class="toolbar-sagda">
           <span style="font-size:12px;color:var(--text-3)">${personeller.length} personel</span>
+          <button class="btn-mini" onclick="PuantajModul.gorunumDegistir()">
+            ${saatGoster ? 'Durum kodlarını göster' : 'Saatleri göster'}
+          </button>
           <button class="btn-export" onclick="PuantajModul.exportCSV()">CSV İndir</button>
         </div>
       </div>
@@ -98,6 +110,10 @@ const PuantajModul = (() => {
             <span class="pt-lejant-kutu" style="background:${RENK[d].zemin};color:${RENK[d].yazi}">${KOD[d]}</span>
             ${METIN[d]}
           </span>`).join('')}
+        <span class="pt-lejant-mesai">
+          Mesai ${mesai.baslangic}–${mesai.bitis} · günlük ${saatMetni(mesai.gunluk_saat)} saat
+          (${saatMetni(mesai.mola_saat)} saat ara dinlenmesi düşülür)
+        </span>
         <span class="pt-lejant-ipucu">Tıkla: durumu değiştir · Çift tıkla: saat ve not</span>
       </div>
 
@@ -107,10 +123,10 @@ const PuantajModul = (() => {
             <tr>
               <th class="pt-ad-bas">Personel</th>
               ${gunler.map(gunBasligi).join('')}
-              <th class="pt-toplam-bas" title="Çalışılan gün">Çal</th>
+              <th class="pt-toplam-bas" title="Çalışılan gün">Gün</th>
               <th class="pt-toplam-bas" title="Devamsız gün">Dev</th>
               <th class="pt-toplam-bas" title="İzinli gün">İzn</th>
-              <th class="pt-toplam-bas" title="Fazla mesai (saat)">FM</th>
+              <th class="pt-toplam-bas pt-saat-bas" title="Aylık toplam çalışılan saat">Saat</th>
             </tr>
           </thead>
           <tbody>
@@ -123,10 +139,25 @@ const PuantajModul = (() => {
                 <td class="pt-toplam">${s.calisilan}</td>
                 <td class="pt-toplam${s.devamsiz ? ' pt-uyari' : ''}">${s.devamsiz}</td>
                 <td class="pt-toplam">${s.izinli}</td>
-                <td class="pt-toplam">${s.fazla_mesai || 0}</td>
+                <td class="pt-toplam pt-saat-toplam">${saatMetni(s.toplam_saat || 0)}</td>
               </tr>`).join('')
             : `<tr><td colspan="${gunler.length + 5}" style="text-align:center;padding:40px;color:var(--text-3)">Personel bulunamadı</td></tr>`}
           </tbody>
+          ${personeller.length ? `<tfoot>
+            <tr class="pt-toplam-satir">
+              <td class="pt-ad"><strong>Toplam</strong></td>
+              ${gunler.map(g => {
+                const gunToplam = personeller.reduce((t, s) => t + (s.gunler[String(g.gun)].saat || 0), 0);
+                return `<td class="pt-hucre pt-gun-toplam${g.hafta_sonu ? ' pt-hs' : ''}"
+                  title="${g.gun} ${AYLAR[secilenAy-1]} · toplam ${saatMetni(gunToplam)} saat"
+                  >${gunToplam ? saatMetni(gunToplam) : ''}</td>`;
+              }).join('')}
+              <td class="pt-toplam">${personeller.reduce((t, s) => t + s.calisilan, 0)}</td>
+              <td class="pt-toplam">${personeller.reduce((t, s) => t + s.devamsiz, 0)}</td>
+              <td class="pt-toplam">${personeller.reduce((t, s) => t + s.izinli, 0)}</td>
+              <td class="pt-toplam pt-saat-toplam">${saatMetni(personeller.reduce((t, s) => t + (s.toplam_saat || 0), 0))}</td>
+            </tr>
+          </tfoot>` : ''}
         </table>
       </div>
 
@@ -167,11 +198,27 @@ const PuantajModul = (() => {
     return cetvel.personeller.find(s => s.personel_id === Number(pid));
   }
 
+  // Sunucudaki hesabın aynısı: saat girilmişse farktan mola düşülür,
+  // girilmemişse duruma göre standart süre sayılır.
+  function hucreSaati(h) {
+    if (!h.durum || ['devamsiz', 'izinli', 'resmi_tatil', 'hafta_sonu'].includes(h.durum)) return 0;
+    const dk = t => { if (!t) return null; const [a, b] = String(t).split(':'); const s = +a + (+b) / 60; return isNaN(s) ? null : s; };
+    const b = dk(h.giris_saati), c = dk(h.cikis_saati);
+    if (b !== null && c !== null && c > b) {
+      let sure = c - b;
+      if (sure > mesai.gunluk_saat / 2) sure -= mesai.mola_saat;
+      return Math.round(Math.max(sure, 0) * 100) / 100;
+    }
+    return h.durum === 'tam' ? mesai.gunluk_saat : mesai.gunluk_saat / 2;
+  }
+
   function toplamlariTazele(satir) {
-    const durumlar = Object.values(satir.gunler).map(h => h.durum);
+    const hucreler = Object.values(satir.gunler);
+    const durumlar = hucreler.map(h => h.durum);
     satir.calisilan = durumlar.filter(d => d === 'tam' || d === 'yarim').length;
     satir.devamsiz  = durumlar.filter(d => d === 'devamsiz').length;
     satir.izinli    = durumlar.filter(d => d === 'izinli').length;
+    satir.toplam_saat = Math.round(hucreler.reduce((t, h) => t + hucreSaati(h), 0) * 100) / 100;
 
     const tr = document.querySelector(`.pt-hucre[data-pid="${satir.personel_id}"]`)?.closest('tr');
     if (!tr) return;
@@ -180,11 +227,31 @@ const PuantajModul = (() => {
     toplamlar[1].textContent = satir.devamsiz;
     toplamlar[1].classList.toggle('pt-uyari', satir.devamsiz > 0);
     toplamlar[2].textContent = satir.izinli;
+    toplamlar[3].textContent = saatMetni(satir.toplam_saat);
+
+    ekipToplamiTazele();
   }
 
-  function hucreBoya(td, durum) {
+  function ekipToplamiTazele() {
+    const tfoot = document.querySelector('.pt-toplam-satir');
+    if (!tfoot || !cetvel) return;
+    const p = cetvel.personeller;
+    const hucreler = tfoot.querySelectorAll('.pt-gun-toplam');
+    cetvel.gunler.forEach((g, i) => {
+      const t = p.reduce((a, s) => a + hucreSaati(s.gunler[String(g.gun)]), 0);
+      if (hucreler[i]) hucreler[i].textContent = t ? saatMetni(t) : '';
+    });
+    const toplamlar = tfoot.querySelectorAll('.pt-toplam');
+    toplamlar[0].textContent = p.reduce((t, s) => t + s.calisilan, 0);
+    toplamlar[1].textContent = p.reduce((t, s) => t + s.devamsiz, 0);
+    toplamlar[2].textContent = p.reduce((t, s) => t + s.izinli, 0);
+    toplamlar[3].textContent = saatMetni(p.reduce((t, s) => t + (s.toplam_saat || 0), 0));
+  }
+
+  function hucreBoya(td, durum, h) {
     const r = durum ? RENK[durum] : null;
-    td.textContent = durum ? KOD[durum] : '';
+    const saat = h ? hucreSaati(h) : 0;
+    td.textContent = durum ? (saatGoster ? (saat ? saatMetni(saat) : '') : KOD[durum]) : '';
     td.dataset.durum = durum || '';
     td.style.background = r ? r.zemin : (td.classList.contains('pt-hs') ? 'var(--gray-50)' : '');
     td.style.color = r ? r.yazi : '';
@@ -198,7 +265,8 @@ const PuantajModul = (() => {
 
     // Önce ekranda göster, sonra kaydet; hata olursa geri al.
     const oncekiDurum = mevcut;
-    hucreBoya(td, yeni);
+    const oncekiHucre = { ...satir.gunler[String(gun)] };
+    hucreBoya(td, yeni, { durum: yeni });
     td.classList.add('pt-kaydediliyor');
 
     const tarih = `${secilenYil}-${String(secilenAy).padStart(2,'0')}-${String(gun).padStart(2,'0')}`;
@@ -206,17 +274,22 @@ const PuantajModul = (() => {
       if (yeni === null) {
         const kayit = satir.gunler[String(gun)];
         if (kayit.id) await apiFetch(`/puantaj/${kayit.id}`, { method: 'DELETE' });
-        satir.gunler[String(gun)] = { id: null, durum: null, fazla_mesai: 0 };
+        satir.gunler[String(gun)] = { id: null, durum: null, giris_saati: null, cikis_saati: null, fazla_mesai: 0 };
       } else {
         const s = await apiFetch('/puantaj', {
           method: 'POST',
           body: JSON.stringify({ personel_id: satir.personel_id, tarih: tarih, durum: yeni }),
         });
-        satir.gunler[String(gun)] = { id: s.id, durum: yeni, fazla_mesai: s.fazla_mesai || 0 };
+        satir.gunler[String(gun)] = {
+          id: s.id, durum: yeni,
+          giris_saati: s.giris_saati, cikis_saati: s.cikis_saati,
+          fazla_mesai: s.fazla_mesai || 0,
+        };
+        hucreBoya(td, yeni, satir.gunler[String(gun)]);
       }
       toplamlariTazele(satir);
     } catch (err) {
-      hucreBoya(td, oncekiDurum);
+      hucreBoya(td, oncekiDurum, oncekiHucre);
       alert(err.message);
     } finally {
       td.classList.remove('pt-kaydediliyor');
@@ -239,11 +312,15 @@ const PuantajModul = (() => {
           </select>
         </div>
         <div class="form-grid-2">
-          <div class="form-group"><label>Giriş Saati</label><input type="time" name="giris_saati" value="09:00" /></div>
-          <div class="form-group"><label>Çıkış Saati</label><input type="time" name="cikis_saati" value="18:00" /></div>
+          <div class="form-group"><label>Giriş Saati</label>
+            <input type="time" name="giris_saati" value="${kayit.giris_saati || mesai.baslangic}" /></div>
+          <div class="form-group"><label>Çıkış Saati</label>
+            <input type="time" name="cikis_saati" value="${kayit.cikis_saati || mesai.bitis}" /></div>
         </div>
-        <div class="form-group"><label>Fazla Mesai (saat)</label>
-          <input type="number" name="fazla_mesai" value="${kayit.fazla_mesai || 0}" min="0" max="12" step="0.5" /></div>
+        <div class="pt-hesap-kutu">
+          Çalışılan süre: <strong id="pt-hesap">${saatMetni(hucreSaati(kayit))} saat</strong>
+          <span class="hucre-alt">${saatMetni(mesai.mola_saat)} saat ara dinlenmesi düşülür</span>
+        </div>
         <div class="form-group"><label>Not</label><input name="notlar" placeholder="Opsiyonel..." /></div>
         <div id="pt-form-hata" class="hata-mesaji gizli"></div>
         <div class="modal-footer">
@@ -252,6 +329,20 @@ const PuantajModul = (() => {
         </div>
       </form>`;
 
+    // Saat veya durum değişince hesaplanan süreyi anında göster
+    const form = document.getElementById('pt-form');
+    const hesapTazele = () => {
+      const fd = new FormData(form);
+      const s = hucreSaati({
+        durum: fd.get('durum'),
+        giris_saati: fd.get('giris_saati'),
+        cikis_saati: fd.get('cikis_saati'),
+      });
+      document.getElementById('pt-hesap').textContent = `${saatMetni(s)} saat`;
+    };
+    form.querySelectorAll('input[type=time], select[name=durum]')
+        .forEach(el => el.addEventListener('change', hesapTazele));
+
     document.getElementById('pt-form').addEventListener('submit', async e => {
       e.preventDefault();
       const fd = new FormData(e.target);
@@ -259,10 +350,14 @@ const PuantajModul = (() => {
         const s = await apiFetch('/puantaj', { method: 'POST', body: JSON.stringify({
           personel_id: satir.personel_id, tarih: tarih, durum: fd.get('durum'),
           giris_saati: fd.get('giris_saati') || null, cikis_saati: fd.get('cikis_saati') || null,
-          fazla_mesai: parseFloat(fd.get('fazla_mesai')) || 0, notlar: fd.get('notlar') || null,
+          notlar: fd.get('notlar') || null,
         })});
-        satir.gunler[String(gun)] = { id: s.id, durum: fd.get('durum'), fazla_mesai: s.fazla_mesai || 0 };
-        hucreBoya(td, fd.get('durum'));
+        satir.gunler[String(gun)] = {
+          id: s.id, durum: fd.get('durum'),
+          giris_saati: s.giris_saati, cikis_saati: s.cikis_saati,
+          fazla_mesai: s.fazla_mesai || 0,
+        };
+        hucreBoya(td, fd.get('durum'), satir.gunler[String(gun)]);
         toplamlariTazele(satir);
         PuantajModul.modalKapat();
       } catch (err) {
@@ -290,17 +385,40 @@ const PuantajModul = (() => {
       render();
     },
 
+    gorunumDegistir() {
+      saatGoster = !saatGoster;
+      render();
+    },
+
     oncekiAy()  { donemDegistir(-1); },
     sonrakiAy() { donemDegistir(1); },
     modalKapat() { document.getElementById('pt-modal').classList.add('gizli'); },
 
     exportCSV() {
       const { gunler, personeller } = cetvel;
-      const baslik = ['Personel', 'Departman', ...gunler.map(g => g.gun), 'Çalışılan', 'Devamsız', 'İzinli', 'Fazla Mesai'];
+      const baslik = ['Personel', 'Departman', ...gunler.map(g => g.gun),
+                      'Çalışılan Gün', 'Devamsız', 'İzinli', 'Toplam Saat'];
+      // Gün hücrelerine hem durum kodu hem saat yazılır: "T 10"
       const satirlar = personeller.map(s => [
         s.ad_soyad, s.departman || '',
-        ...gunler.map(g => KOD[s.gunler[String(g.gun)].durum] || ''),
-        s.calisilan, s.devamsiz, s.izinli, s.fazla_mesai || 0,
+        ...gunler.map(g => {
+          const h = s.gunler[String(g.gun)];
+          if (!h.durum) return '';
+          const saat = hucreSaati(h);
+          return saat ? `${KOD[h.durum]} ${saatMetni(saat)}` : KOD[h.durum];
+        }),
+        s.calisilan, s.devamsiz, s.izinli, saatMetni(s.toplam_saat || 0),
+      ]);
+      satirlar.push([
+        'TOPLAM', '',
+        ...gunler.map(g => {
+          const t = personeller.reduce((a, s) => a + hucreSaati(s.gunler[String(g.gun)]), 0);
+          return t ? saatMetni(t) : '';
+        }),
+        personeller.reduce((t, s) => t + s.calisilan, 0),
+        personeller.reduce((t, s) => t + s.devamsiz, 0),
+        personeller.reduce((t, s) => t + s.izinli, 0),
+        saatMetni(personeller.reduce((t, s) => t + (s.toplam_saat || 0), 0)),
       ]);
       const csv = '﻿' + [baslik, ...satirlar]
         .map(r => r.map(h => `"${String(h).replace(/"/g, '""')}"`).join(';'))

@@ -15,6 +15,51 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/puantaj", tags=["Puantaj"])
 
 
+# ─── Mesai düzeni ───────────────────────────────────────────────────
+# Şirketin çalışma düzeni. Değiştirmek için yalnızca bu blok yeterlidir.
+MESAI_BASLANGIC = "08:00"
+MESAI_BITIS     = "19:00"
+MOLA_SAAT       = 1.0     # ara dinlenmesi, çalışma süresinden düşülür
+GUNLUK_MESAI    = 10.0    # 08:00–19:00 arası 11 saat, 1 saat mola düşülür
+YARIM_GUN       = GUNLUK_MESAI / 2
+
+# Fazla mesai ücreti maaşa dahil olduğu için ayrıca hesaplanmaz;
+# fazla_mesai alanı yalnızca bilgi amaçlı tutulur.
+
+
+def _saate_cevir(hhmm: Optional[str]) -> Optional[float]:
+    """ "09:30" -> 9.5. Bozuk veya boş değer için None döner."""
+    if not hhmm:
+        return None
+    try:
+        saat, dakika = hhmm.split(":")
+        return int(saat) + int(dakika) / 60
+    except (ValueError, AttributeError):
+        return None
+
+
+def calisilan_saat(durum, giris: Optional[str], cikis: Optional[str]) -> float:
+    """Bir günün çalışılan saatini hesaplar.
+
+    Giriş ve çıkış girilmişse aradaki fark alınır ve ara dinlenmesi
+    düşülür. Girilmemişse duruma göre standart süre sayılır — kayıtların
+    çoğunda saat alanı boş olduğu için bu karma yöntem kullanılır.
+    """
+    if durum in (models.PuantajDurum.devamsiz, models.PuantajDurum.izinli,
+                 models.PuantajDurum.resmi_tatil, models.PuantajDurum.hafta_sonu, None):
+        return 0.0
+
+    b, s = _saate_cevir(giris), _saate_cevir(cikis)
+    if b is not None and s is not None and s > b:
+        sure = s - b
+        # Ara dinlenmesi yalnızca yarım günü aşan çalışmalarda düşülür
+        if sure > YARIM_GUN:
+            sure -= MOLA_SAAT
+        return round(max(sure, 0.0), 2)
+
+    return GUNLUK_MESAI if durum == models.PuantajDurum.tam else YARIM_GUN
+
+
 class PuantajKayit(BaseModel):
     personel_id: int
     tarih: date
@@ -87,6 +132,9 @@ def aylik_puantaj(
             })
         gun += timedelta(days=1)
 
+    for g in gunler:
+        g["saat"] = calisilan_saat(g["durum"], g["giris_saati"], g["cikis_saati"])
+
     calisilan = sum(1 for g in gunler if g["durum"] in ["tam", "yarim"])
     devamsiz  = sum(1 for g in gunler if g["durum"] == "devamsiz")
     izinli    = sum(1 for g in gunler if g["durum"] == "izinli")
@@ -96,6 +144,7 @@ def aylik_puantaj(
         "personel_id": personel_id, "yil": yil, "ay": ay,
         "calisilan_gun": calisilan, "devamsiz_gun": devamsiz,
         "izinli_gun": izinli, "toplam_fazla_mesai": toplam_fazla,
+        "toplam_saat": round(sum(g["saat"] for g in gunler), 2),
         "gunler": gunler,
     }
 
@@ -145,9 +194,14 @@ def aylik_cetvel(
         hucreler = {}
         for g in range(1, gun_sayisi + 1):
             k = kendi.get(g)
+            durum = k.durum if k else None
             hucreler[str(g)] = {
                 "id": k.id if k else None,
-                "durum": k.durum if k else None,
+                "durum": durum,
+                "giris_saati": k.giris_saati if k else None,
+                "cikis_saati": k.cikis_saati if k else None,
+                "saat": calisilan_saat(durum, k.giris_saati if k else None,
+                                       k.cikis_saati if k else None),
                 "fazla_mesai": float(k.fazla_mesai) if k and k.fazla_mesai else 0,
             }
         durumlar = [h["durum"] for h in hucreler.values()]
@@ -159,11 +213,18 @@ def aylik_cetvel(
             "calisilan": sum(1 for d in durumlar if d in (models.PuantajDurum.tam, models.PuantajDurum.yarim)),
             "devamsiz": sum(1 for d in durumlar if d == models.PuantajDurum.devamsiz),
             "izinli": sum(1 for d in durumlar if d == models.PuantajDurum.izinli),
+            "toplam_saat": round(sum(h["saat"] for h in hucreler.values()), 2),
             "fazla_mesai": sum(h["fazla_mesai"] for h in hucreler.values()),
         })
 
     return {
         "yil": yil, "ay": ay, "gun_sayisi": gun_sayisi,
+        "mesai": {
+            "baslangic": MESAI_BASLANGIC,
+            "bitis": MESAI_BITIS,
+            "gunluk_saat": GUNLUK_MESAI,
+            "mola_saat": MOLA_SAAT,
+        },
         "gunler": gunler, "personeller": satirlar,
     }
 

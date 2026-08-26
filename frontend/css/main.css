@@ -708,6 +708,36 @@ html, body {
 .pt-toplam.pt-uyari { color:var(--danger); font-weight:700; }
 .pt-cetvel th.pt-toplam-bas:first-of-type, .pt-cetvel td.pt-toplam:first-of-type { border-left:1px solid var(--border-split); }
 
+/* Saat sütunu ve toplam satırı */
+.pt-saat-bas, .pt-saat-toplam { min-width:48px; width:48px; font-weight:700; color:var(--text); }
+.pt-toplam-satir td {
+  border-top:2px solid var(--border-split);
+  background:var(--gray-50);
+  font-weight:700; font-size:12px;
+}
+.pt-toplam-satir .pt-ad { background:var(--gray-50); }
+.pt-gun-toplam { font-size:10px; color:var(--text-2); cursor:default; }
+.pt-gun-toplam:hover { outline-color:transparent; }
+.pt-hucre.pt-saat-modu { font-size:10px; font-weight:600; }
+
+/* Lejantta mesai düzeni bilgisi */
+.pt-lejant-mesai {
+  color:var(--text-2);
+  padding-left:var(--sp-m);
+  border-left:1px solid var(--border-split);
+}
+
+/* Gün detayında hesaplanan süre kutusu */
+.pt-hesap-kutu {
+  background:var(--primary-light);
+  border-radius:var(--radius);
+  padding:var(--sp-s) var(--sp-m);
+  margin-bottom:var(--sp-s);
+  font-size:13px; color:var(--text-2);
+}
+.pt-hesap-kutu strong { font-size:16px; color:var(--primary); }
+.pt-hesap-kutu .hucre-alt { margin-left:var(--sp-s); font-size:11px; }
+
 /* ── Bordro Modülü ───────────────────────────────────────────────── */
 .bordro-onizle-panel { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; padding:10px 13px; margin:8px 0; }
 .onizle-baslik { font-size:11px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px; }
