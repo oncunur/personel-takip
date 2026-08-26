@@ -1,7 +1,7 @@
 // ─── Satın Alma Talepleri Modülü ──────────────────────────────────
 const SatinAlmaModul = (() => {
   const O = Ortak;
-  let talepler = [], ozet = null, demo = false;
+  let talepler = [], ozet = null;
   let arama = '', filtreDurum = '', filtreOncelik = '';
   let kalemSayac = 0;
 
@@ -16,31 +16,10 @@ const SatinAlmaModul = (() => {
   const ONCELIK = { dusuk: 'Düşük', normal: 'Normal', yuksek: 'Yüksek', acil: 'Acil' };
   const ONCELIK_RENK = { dusuk: '#9CA3AF', normal: '#6B7280', yuksek: '#F59E0B', acil: '#EF4444' };
 
-  const DEMO_TALEPLER = [
-    { id:1, talep_no:'SAT-2026-001', talep_eden:'Hatice Şahin', talep_eden_id:2, departman:'İdari İşler', tarih:'2026-08-15', ihtiyac_tarihi:'2026-09-01', aciklama:'Yeni ofis katı için mobilya', oncelik:'yuksek', tahmini_tutar:39000, durum:'teslim_alindi', onaylayan:'Sistem Yöneticisi', onay_tarihi:'2026-08-16T09:00:00', onay_notu:'Bütçe uygun', tedarikci:'Ofis Dünyası A.Ş.', siparis_tarihi:'2026-08-18', teslim_tarihi:'2026-08-21', kalem_sayisi:2, kalemler:[{id:1,urun_ad:'Ofis koltuğu',miktar:5,birim:'adet',birim_fiyat:4200,tutar:21000},{id:2,urun_ad:'Toplantı masası',miktar:1,birim:'adet',birim_fiyat:18000,tutar:18000}] },
-    { id:2, talep_no:'SAT-2026-002', talep_eden:'Kemal Yılmaz', talep_eden_id:1, departman:'İdari İşler', tarih:'2026-08-19', ihtiyac_tarihi:'2026-08-26', aciklama:'Şantiye güvenlik ekipmanı', oncelik:'acil', tahmini_tutar:14500, durum:'beklemede', onaylayan:null, onay_tarihi:null, onay_notu:null, tedarikci:null, siparis_tarihi:null, teslim_tarihi:null, kalem_sayisi:2, kalemler:[{id:3,urun_ad:'Baret',miktar:25,birim:'adet',birim_fiyat:340,tutar:8500},{id:4,urun_ad:'Emniyet kemeri',miktar:10,birim:'adet',birim_fiyat:600,tutar:6000}] },
-    { id:3, talep_no:'SAT-2026-003', talep_eden:'Ali Yıldız', talep_eden_id:5, departman:'Muhasebe', tarih:'2026-08-20', ihtiyac_tarihi:null, aciklama:'Muhasebe yazılımı yıllık lisans', oncelik:'normal', tahmini_tutar:48000, durum:'onaylandi', onaylayan:'Sistem Yöneticisi', onay_tarihi:'2026-08-21T11:30:00', onay_notu:null, tedarikci:null, siparis_tarihi:null, teslim_tarihi:null, kalem_sayisi:1, kalemler:[{id:5,urun_ad:'ERP yıllık lisans',miktar:1,birim:'yıl',birim_fiyat:48000,tutar:48000}] },
-  ];
-
-  function demoOzet() {
-    const d = {};
-    talepler.forEach(t => { d[t.durum] = (d[t.durum] || 0) + 1; });
-    const onaylanan = talepler.filter(t => ['onaylandi', 'siparis_verildi', 'teslim_alindi'].includes(t.durum));
-    return {
-      yillik_talep: talepler.length,
-      beklemede: d.beklemede || 0, onaylandi: d.onaylandi || 0,
-      siparis_verildi: d.siparis_verildi || 0, teslim_alindi: d.teslim_alindi || 0,
-      reddedildi: d.reddedildi || 0,
-      onaylanan_tutar: onaylanan.reduce((t, x) => t + Number(x.tahmini_tutar || 0), 0),
-      durum_dagilim: d,
-    };
-  }
 
   async function veriYukle() {
     const [td, od] = await Promise.all([O.api('/satinalma'), O.api('/satinalma/ozet')]);
-    demo = !td;
-    if (demo) { if (!talepler.length) talepler = [...DEMO_TALEPLER]; ozet = demoOzet(); }
-    else { talepler = td.veriler; ozet = od; }
+    talepler = td.veriler; ozet = od;
   }
 
   function render() {
@@ -50,7 +29,6 @@ const SatinAlmaModul = (() => {
       (!filtreDurum || t.durum === filtreDurum) && (!filtreOncelik || t.oncelik === filtreOncelik));
 
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Bekleyen', deger: ozet.beklemede, alt: 'onay bekliyor', renk: ozet.beklemede ? '#F59E0B' : '#22C55E' },
         { label: 'Onaylı / Siparişte', deger: ozet.onaylandi + ozet.siparis_verildi, alt: 'işlemde', renk: '#4F6EF7' },
@@ -176,18 +154,7 @@ const SatinAlmaModul = (() => {
         };
         try {
           const s = await O.api('/satinalma', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const p = pers.find(x => x.id === veri.talep_eden_id);
-            const toplam = kalemler.reduce((t, k) => t + k.miktar * k.birim_fiyat, 0);
-            talepler.unshift({
-              id: Date.now(), talep_no: `SAT-2026-${String(talepler.length + 1).padStart(3, '0')}`,
-              talep_eden: p ? p.adSoyad : '—', departman: dep.find(d => d.id === veri.departman_id)?.ad,
-              tarih: veri.tarih, ihtiyac_tarihi: veri.ihtiyac_tarihi, aciklama: veri.aciklama,
-              oncelik: veri.oncelik, tahmini_tutar: toplam, durum: 'beklemede',
-              kalem_sayisi: kalemler.length, kalemler: kalemler.map(k => ({ ...k, tutar: k.miktar * k.birim_fiyat })),
-            });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -215,11 +182,7 @@ const SatinAlmaModul = (() => {
       if (not === null) return;
       try {
         const s = await O.api(`/satinalma/${id}/${tip}`, { method: 'POST', body: JSON.stringify({ onay_notu: not || null }) });
-        if (!s) {
-          const k = Auth.getKullanici();
-          Object.assign(t, { durum: tip === 'onayla' ? 'onaylandi' : 'reddedildi', onaylayan: k ? `${k.ad} ${k.soyad}` : '—', onay_tarihi: new Date().toISOString(), onay_notu: not || null });
-          ozet = demoOzet();
-        } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },
@@ -240,7 +203,7 @@ const SatinAlmaModul = (() => {
         const veri = O.formVeri(e.target);
         try {
           const s = await O.api(`/satinalma/${id}/siparis`, { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) { Object.assign(t, { durum: 'siparis_verildi', ...veri }); ozet = demoOzet(); } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -251,7 +214,7 @@ const SatinAlmaModul = (() => {
       if (!confirm(`${t.talep_no} teslim alındı olarak işaretlensin mi?`)) return;
       try {
         const s = await O.api(`/satinalma/${id}/teslim`, { method: 'POST', body: JSON.stringify({ teslim_tarihi: O.bugun() }) });
-        if (!s) { Object.assign(t, { durum: 'teslim_alindi', teslim_tarihi: O.bugun() }); ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },

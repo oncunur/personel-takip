@@ -62,11 +62,17 @@ function anasayfaIcerigi(kullanici) {
       </div>
     </div>
   `;
-  anasayfaOzetYukle(kullanici);
+  anasayfaOzetYukle(kullanici).catch(err => {
+    const hedef = document.getElementById('anasayfa-ozet');
+    if (hedef) {
+      hedef.innerHTML = `<div class="panel"><div class="panel-header">Özet yüklenemedi</div>
+        <div style="padding:20px;font-size:13px;color:var(--gray-500)">${Ortak.kacir(err.message || 'Bilinmeyen hata')}</div></div>`;
+    }
+  });
 }
 
 // Personel + idari modüllerin özetlerini tek ekranda toplar.
-// Backend kapalıysa modüller demo verisiyle çalıştığı için burada sadece "—" gösterilir.
+// Backend erişilemezse api katmanı hata fırlatır; hata çağıran tarafa iletilir.
 async function anasayfaOzetYukle(kullanici) {
   const O = Ortak;
 
@@ -77,20 +83,6 @@ async function anasayfaOzetYukle(kullanici) {
 
   const hedef = document.getElementById('anasayfa-ozet');
   if (!hedef) return;
-
-  if (!genel) {
-    hedef.innerHTML = `
-      ${O.demoUyari(true)}
-      <div class="panel">
-        <div class="panel-header">Sistem Bilgisi</div>
-        <div style="padding:20px;font-size:13px;color:var(--gray-500);line-height:2">
-          <div>Backend kapalı — modüller demo verisiyle çalışıyor.</div>
-          <div style="margin-top:8px">Rol: ${rolBadge(kullanici.rol)}</div>
-          <div>E-posta: <strong style="color:var(--gray-700)">${kullanici.email}</strong></div>
-        </div>
-      </div>`;
-    return;
-  }
 
   // Aksiyon gerektiren her şey tek listede toplanır
   const isler = [];
@@ -155,10 +147,30 @@ const SAYFALAR = {
   ziyaretci:  () => ZiyaretciModul.yukle(),
 };
 
+// Modül yüklenirken oluşan hatayı içerik alanında gösterir. Backend
+// erişilemediğinde veya yetki yetersiz olduğunda kullanıcı sahte veri
+// değil, ne olduğunu anlatan bir mesaj görür.
+function sayfaHatasiGoster(sayfa, err) {
+  const mesaj = (err && err.message) || 'Beklenmeyen bir hata oluştu';
+  document.getElementById('content-area').innerHTML = `
+    <div class="sayfa-placeholder">
+      <h3>Sayfa yüklenemedi</h3>
+      <p>${Ortak.kacir(mesaj)}</p>
+      <button class="btn-kaydet" id="sayfa-tekrar-dene">Tekrar dene</button>
+    </div>`;
+  const btn = document.getElementById('sayfa-tekrar-dene');
+  if (btn) btn.addEventListener('click', () => sayfaIcerigi(sayfa, Auth.getKullanici()));
+}
+
 function sayfaIcerigi(sayfa, kullanici) {
   if (sayfa === 'anasayfa') { anasayfaIcerigi(kullanici); return; }
   const yukleyici = SAYFALAR[sayfa];
-  if (yukleyici) { yukleyici(); return; }
+  if (yukleyici) {
+    Promise.resolve()
+      .then(yukleyici)
+      .catch(err => sayfaHatasiGoster(sayfa, err));
+    return;
+  }
   document.getElementById('content-area').innerHTML = `
     <div class="sayfa-placeholder">
       <h3>${sayfa}</h3>

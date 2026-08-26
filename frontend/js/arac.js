@@ -2,7 +2,7 @@
 const AracModul = (() => {
   const O = Ortak;
   let sekme = 'araclar';
-  let araclar = [], giderler = [], ozet = null, demo = false;
+  let araclar = [], giderler = [], ozet = null;
   let arama = '', filtreDurum = '', filtreGiderTur = '';
 
   const DURUM = { aktif: 'Aktif', bakimda: 'Bakımda', satildi: 'Satıldı', pasif: 'Pasif' };
@@ -13,48 +13,16 @@ const AracModul = (() => {
     kasko: 'Kasko', muayene: 'Muayene', ceza: 'Trafik Cezası', hgs: 'HGS/OGS', diger: 'Diğer',
   };
 
-  const DEMO_ARACLAR = [
-    { id:1, plaka:'34ABC123', marka:'Ford', model:'Transit', yil:2023, tip:'Kamyonet', yakit_tur:'dizel', km:49200, muayene_tarihi:'2026-09-10', muayene_kalan:19, sigorta_bitis:'2026-12-01', sigorta_kalan:101, kasko_bitis:'2027-01-15', kasko_kalan:146, durum:'aktif', atama_id:1, surucu_id:1, surucu:'Kemal Yılmaz', uyarilar:[{tip:'Muayene',tarih:'2026-09-10',kalan_gun:19}] },
-    { id:2, plaka:'34XYZ789', marka:'Renault', model:'Clio', yil:2024, tip:'Binek', yakit_tur:'benzin', km:22400, muayene_tarihi:'2027-05-20', muayene_kalan:271, sigorta_bitis:'2026-11-10', sigorta_kalan:80, kasko_bitis:'2026-11-10', kasko_kalan:80, durum:'aktif', atama_id:2, surucu_id:2, surucu:'Hatice Şahin', uyarilar:[] },
-    { id:3, plaka:'41KM4455', marka:'Isuzu', model:'NPR', yil:2021, tip:'Kamyon', yakit_tur:'dizel', km:187500, muayene_tarihi:'2026-08-28', muayene_kalan:6, sigorta_bitis:'2027-02-01', sigorta_kalan:163, kasko_bitis:null, kasko_kalan:null, durum:'bakimda', atama_id:null, surucu:null, uyarilar:[{tip:'Muayene',tarih:'2026-08-28',kalan_gun:6}] },
-  ];
-  const DEMO_GIDERLER = [
-    { id:1, arac_id:1, plaka:'34ABC123', tur:'yakit', tarih:'2026-08-05', tutar:2850, km:49200, litre:52.5, aciklama:null },
-    { id:2, arac_id:1, plaka:'34ABC123', tur:'bakim', tarih:'2026-08-12', tutar:7400, km:null, litre:null, aciklama:'Periyodik bakım' },
-    { id:3, arac_id:2, plaka:'34XYZ789', tur:'yakit', tarih:'2026-08-14', tutar:1950, km:22400, litre:33.2, aciklama:null },
-    { id:4, arac_id:3, plaka:'41KM4455', tur:'ceza', tarih:'2026-07-22', tutar:2167, km:null, litre:null, aciklama:'Hız sınırı ihlali' },
-  ];
-
-  function demoOzet() {
-    const aktifler = araclar.filter(a => a.durum !== 'satildi');
-    const dagilim = {};
-    giderler.forEach(g => { dagilim[g.tur] = (dagilim[g.tur] || 0) + Number(g.tutar); });
-    return {
-      arac_sayisi: aktifler.length,
-      atanan: aktifler.filter(a => a.atama_id).length,
-      bosta: aktifler.filter(a => !a.atama_id).length,
-      bakimda: aktifler.filter(a => a.durum === 'bakimda').length,
-      yillik_gider: giderler.reduce((t, g) => t + Number(g.tutar), 0),
-      gider_dagilim: dagilim,
-      uyarilar: aktifler.flatMap(a => (a.uyarilar || []).map(u => ({ ...u, arac_id: a.id, plaka: a.plaka })))
-        .sort((x, y) => x.kalan_gun - y.kalan_gun),
-    };
-  }
 
   async function veriYukle() {
     const [ad, gd, od] = await Promise.all([O.api('/arac'), O.api('/arac/gider/liste'), O.api('/arac/ozet')]);
-    demo = !ad;
-    if (demo) {
-      if (!araclar.length) { araclar = [...DEMO_ARACLAR]; giderler = [...DEMO_GIDERLER]; }
-      ozet = demoOzet();
-    } else { araclar = ad.veriler; giderler = gd.veriler; ozet = od; }
+    araclar = ad.veriler; giderler = gd.veriler; ozet = od;
   }
 
   function render() {
     const y = O.yonetici();
     const uyarilar = ozet.uyarilar || [];
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Araç', deger: ozet.arac_sayisi, alt: `${ozet.atanan} atanmış · ${ozet.bosta} boşta` },
         { label: 'Bakımda', deger: ozet.bakimda, alt: 'serviste', renk: ozet.bakimda ? '#F59E0B' : '#22C55E' },
@@ -203,12 +171,7 @@ const AracModul = (() => {
         try {
           const s = id ? await O.api(`/arac/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
                        : await O.api('/arac', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            veri.plaka = (veri.plaka || '').toUpperCase().replace(/\s/g, '');
-            if (id) Object.assign(araclar.find(x => x.id === id), veri);
-            else araclar.push({ id: Date.now(), durum: 'aktif', atama_id: null, surucu: null, uyarilar: [], muayene_kalan: null, sigorta_kalan: null, kasko_kalan: null, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -235,12 +198,7 @@ const AracModul = (() => {
         const veri = O.formVeri(e.target, ['arac_id', 'personel_id']);
         try {
           const s = await O.api('/arac/atama', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const a = araclar.find(x => x.id === veri.arac_id);
-            const p = pers.find(x => x.id === veri.personel_id);
-            Object.assign(a, { atama_id: Date.now(), surucu_id: p.id, surucu: p.adSoyad });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -251,8 +209,7 @@ const AracModul = (() => {
       if (!confirm(`${a ? a.plaka : 'Araç'} ataması sonlandırılsın mı?`)) return;
       try {
         const s = await O.api(`/arac/atama/${atamaId}/bitir`, { method: 'POST', body: JSON.stringify({ bitis_tarihi: O.bugun() }) });
-        if (!s) { Object.assign(a, { atama_id: null, surucu: null, surucu_id: null }); ozet = demoOzet(); }
-        else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },
@@ -278,12 +235,7 @@ const AracModul = (() => {
         const veri = O.formVeri(e.target, ['arac_id', 'tutar', 'km', 'litre']);
         try {
           const s = await O.api('/arac/gider', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const a = araclar.find(x => x.id === veri.arac_id);
-            if (a && veri.km && veri.km > a.km) a.km = veri.km;
-            giderler.unshift({ id: Date.now(), plaka: a ? a.plaka : null, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -293,7 +245,7 @@ const AracModul = (() => {
       if (!confirm('Gider kaydı silinsin mi?')) return;
       try {
         const s = await O.api(`/arac/gider/${id}`, { method: 'DELETE' });
-        if (!s) { giderler = giderler.filter(x => x.id !== id); ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },

@@ -3,7 +3,6 @@ const KonaklamaModul = (() => {
   const O = Ortak;
   let sekme = 'konutlar';
   let konutlar = [], kayitlar = [], giderler = [], ozet = null;
-  let demo = false;
   let arama = '', filtreTur = '', filtreDurum = '';
 
   const TUR = {
@@ -17,55 +16,13 @@ const KonaklamaModul = (() => {
     internet: 'İnternet', aidat: 'Aidat', tamir: 'Tamir', temizlik: 'Temizlik', diger: 'Diğer',
   };
 
-  // ---- Demo verisi ----
-  const DEMO_KONUTLAR = [
-    { id:1, kod:'KNT-001', ad:'Merkez Lojman A Blok', tur:'kiralik_daire', adres:'Atatürk Cad. No:12 D:4', il:'İstanbul', ilce:'Kadıköy', oda_sayisi:'3+1', kapasite:4, dolu:3, bos_yatak:1, doluluk_yuzde:75, aylik_kira:28000, depozito:56000, aidat:1500, ev_sahibi_ad:'Ahmet Öz', ev_sahibi_telefon:'0532 999 88 77', sozlesme_baslangic:'2026-01-01', sozlesme_bitis:'2026-10-15', kalan_gun:54, durum:'aktif' },
-    { id:2, kod:'KNT-002', ad:'Şantiye Misafirhanesi', tur:'misafirhane', adres:'Organize Sanayi 4. Cad.', il:'Kocaeli', ilce:'Gebze', oda_sayisi:'6 oda', kapasite:12, dolu:9, bos_yatak:3, doluluk_yuzde:75, aylik_kira:45000, depozito:45000, aidat:0, ev_sahibi_ad:'Gebze Konut A.Ş.', ev_sahibi_telefon:'0262 555 44 33', sozlesme_baslangic:'2025-06-01', sozlesme_bitis:'2027-06-01', kalan_gun:283, durum:'aktif' },
-    { id:3, kod:'KNT-003', ad:'Ankara Ofis Dairesi', tur:'kiralik_daire', adres:'Çankaya Mah. 21. Sok.', il:'Ankara', ilce:'Çankaya', oda_sayisi:'2+1', kapasite:2, dolu:0, bos_yatak:2, doluluk_yuzde:0, aylik_kira:22000, depozito:44000, aidat:900, ev_sahibi_ad:'Sema Kılıç', ev_sahibi_telefon:'0533 111 22 33', sozlesme_baslangic:'2026-03-01', sozlesme_bitis:'2027-03-01', kalan_gun:191, durum:'bos' },
-  ];
-  const DEMO_KAYITLAR = [
-    { id:1, konut_id:1, konut_ad:'Merkez Lojman A Blok', konut_kod:'KNT-001', personel_id:1, personel_ad:'Kemal Yılmaz', departman:'İdari İşler', telefon:'0532 100 20 30', giris_tarihi:'2026-02-01', cikis_tarihi:null, gun_sayisi:202, oda_no:'1', aktif:true },
-    { id:2, konut_id:1, konut_ad:'Merkez Lojman A Blok', konut_kod:'KNT-001', personel_id:4, personel_ad:'Mehmet Demir', departman:'Yazılım', telefon:'0533 222 33 44', giris_tarihi:'2026-04-10', cikis_tarihi:null, gun_sayisi:134, oda_no:'2', aktif:true },
-    { id:3, konut_id:2, konut_ad:'Şantiye Misafirhanesi', konut_kod:'KNT-002', personel_id:5, personel_ad:'Ali Yıldız', departman:'Muhasebe', telefon:'0536 444 55 66', giris_tarihi:'2026-05-02', cikis_tarihi:null, gun_sayisi:112, oda_no:'A-3', aktif:true },
-  ];
-  const DEMO_GIDERLER = [
-    { id:1, konut_id:1, konut_ad:'Merkez Lojman A Blok', tur:'kira', yil:2026, ay:8, tutar:28000, odendi:true, odeme_tarihi:'2026-08-05' },
-    { id:2, konut_id:1, konut_ad:'Merkez Lojman A Blok', tur:'elektrik', yil:2026, ay:7, tutar:3450.75, odendi:false, odeme_tarihi:null },
-    { id:3, konut_id:2, konut_ad:'Şantiye Misafirhanesi', tur:'kira', yil:2026, ay:8, tutar:45000, odendi:false, odeme_tarihi:null },
-  ];
-
-  function demoOzet() {
-    const aktifler = konutlar.filter(k => k.durum !== 'pasif');
-    const kap = aktifler.reduce((t, k) => t + (k.kapasite || 0), 0);
-    const dolu = kayitlar.filter(k => k.aktif).length;
-    const odenmemis = giderler.filter(g => !g.odendi);
-    return {
-      konut_sayisi: aktifler.length,
-      toplam_kapasite: kap,
-      dolu_yatak: dolu,
-      bos_yatak: Math.max(kap - dolu, 0),
-      doluluk_yuzde: kap ? Math.round(dolu / kap * 100) : 0,
-      aylik_kira_toplam: aktifler.reduce((t, k) => t + Number(k.aylik_kira || 0), 0),
-      odenmemis_gider_sayisi: odenmemis.length,
-      odenmemis_gider_tutar: odenmemis.reduce((t, g) => t + Number(g.tutar), 0),
-      sozlesme_uyarilari: aktifler.filter(k => k.kalan_gun !== null && k.kalan_gun <= 60)
-        .map(k => ({ id: k.id, kod: k.kod, ad: k.ad, bitis: k.sozlesme_bitis, kalan_gun: k.kalan_gun }))
-        .sort((a, b) => a.kalan_gun - b.kalan_gun),
-    };
-  }
 
   async function veriYukle() {
     const [kd, yd, gd, od] = await Promise.all([
       O.api('/konaklama/konutlar'), O.api('/konaklama/kayitlar?sadece_aktif=false'),
       O.api('/konaklama/giderler'), O.api('/konaklama/ozet'),
     ]);
-    demo = !kd;
-    if (demo) {
-      if (!konutlar.length) { konutlar = [...DEMO_KONUTLAR]; kayitlar = [...DEMO_KAYITLAR]; giderler = [...DEMO_GIDERLER]; }
-      ozet = demoOzet();
-    } else {
-      konutlar = kd.veriler; kayitlar = yd.veriler; giderler = gd.veriler; ozet = od;
-    }
+    konutlar = kd.veriler; kayitlar = yd.veriler; giderler = gd.veriler; ozet = od;
   }
 
   // ---- Render ----
@@ -73,7 +30,6 @@ const KonaklamaModul = (() => {
     const y = O.yonetici();
     const uyarilar = ozet.sozlesme_uyarilari || [];
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Konut', deger: ozet.konut_sayisi, alt: `${ozet.toplam_kapasite} yatak kapasitesi` },
         { label: 'Doluluk', deger: `%${ozet.doluluk_yuzde}`, alt: `${ozet.dolu_yatak} dolu / ${ozet.bos_yatak} boş`, renk: ozet.doluluk_yuzde >= 90 ? '#EF4444' : '#22C55E' },
@@ -256,11 +212,7 @@ const KonaklamaModul = (() => {
           const sonuc = id
             ? await O.api(`/konaklama/konutlar/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
             : await O.api('/konaklama/konutlar', { method: 'POST', body: JSON.stringify(veri) });
-          if (!sonuc) { // demo
-            if (id) Object.assign(konutlar.find(x => x.id === id), veri);
-            else konutlar.push({ id: Date.now(), kod: `KNT-${String(konutlar.length + 1).padStart(3, '0')}`, dolu: 0, bos_yatak: veri.kapasite || 0, doluluk_yuzde: 0, durum: 'bos', kalan_gun: null, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -303,7 +255,7 @@ const KonaklamaModul = (() => {
       if (!confirm(`"${k.ad}" pasife alınsın mı?`)) return;
       try {
         const s = await O.api(`/konaklama/konutlar/${id}`, { method: 'DELETE' });
-        if (!s) { k.durum = 'pasif'; ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },
@@ -334,13 +286,7 @@ const KonaklamaModul = (() => {
         const veri = O.formVeri(e.target, ['konut_id', 'personel_id']);
         try {
           const s = await O.api('/konaklama/kayitlar', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const k = konutlar.find(x => x.id === veri.konut_id);
-            const p = pers.find(x => x.id === veri.personel_id);
-            kayitlar.unshift({ id: Date.now(), konut_id: k.id, konut_ad: k.ad, konut_kod: k.kod, personel_id: p.id, personel_ad: p.adSoyad, departman: p.departman_ad, giris_tarihi: veri.giris_tarihi, cikis_tarihi: null, gun_sayisi: 0, oda_no: veri.oda_no, aktif: true });
-            k.dolu++; k.bos_yatak = Math.max(k.kapasite - k.dolu, 0); k.doluluk_yuzde = Math.round(k.dolu / k.kapasite * 100);
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -351,12 +297,7 @@ const KonaklamaModul = (() => {
       if (!confirm(`${kayit.personel_ad} için çıkış kaydı oluşturulsun mu?`)) return;
       try {
         const s = await O.api(`/konaklama/kayitlar/${id}/cikis`, { method: 'POST', body: JSON.stringify({ cikis_tarihi: O.bugun() }) });
-        if (!s) {
-          kayit.aktif = false; kayit.cikis_tarihi = O.bugun();
-          const k = konutlar.find(x => x.id === kayit.konut_id);
-          if (k) { k.dolu = Math.max(k.dolu - 1, 0); k.bos_yatak = k.kapasite - k.dolu; k.doluluk_yuzde = Math.round(k.dolu / k.kapasite * 100); }
-          ozet = demoOzet();
-        } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },
@@ -387,10 +328,7 @@ const KonaklamaModul = (() => {
         if (veri.odendi) veri.odeme_tarihi = O.bugun();
         try {
           const s = await O.api('/konaklama/giderler', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            giderler.unshift({ id: Date.now(), konut_ad: konutlar.find(x => x.id === veri.konut_id)?.ad, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -399,17 +337,7 @@ const KonaklamaModul = (() => {
     async giderOde(id) {
       try {
         const s = await O.api(`/konaklama/giderler/${id}/ode`, { method: 'POST' });
-        if (!s) { const g = giderler.find(x => x.id === id); g.odendi = true; g.odeme_tarihi = O.bugun(); ozet = demoOzet(); }
-        else await veriYukle();
-        render();
-      } catch (err) { alert(err.message); }
-    },
-
-    async giderSil(id) {
-      if (!confirm('Gider kaydı silinsin mi?')) return;
-      try {
-        const s = await O.api(`/konaklama/giderler/${id}`, { method: 'DELETE' });
-        if (!s) { giderler = giderler.filter(x => x.id !== id); ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },

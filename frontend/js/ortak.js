@@ -3,7 +3,6 @@
 const Ortak = (() => {
   const BASE = 'http://localhost:8000';
 
-  // Backend erişilemezse null döner → modüller demo verisine düşer
   async function api(url, opts = {}) {
     const token = Auth.getToken();
     try {
@@ -16,7 +15,10 @@ const Ortak = (() => {
       if (res.status === 204) return { _bos: true };
       return res.json();
     } catch (e) {
-      if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') return null;
+      // Ağ/zaman aşımı hatası: sahte veriye düşmek yerine açıkça bildir.
+      if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') {
+        throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+      }
       throw e;
     }
   }
@@ -144,18 +146,10 @@ const Ortak = (() => {
 
   // Personel listesi tüm idari modüllerde lazım — bir kez çekilip paylaşılır
   let _personeller = null;
-  const DEMO_PERSONEL = [
-    { id: 1, ad: 'Kemal', soyad: 'Yılmaz', departman_ad: 'İdari İşler', pozisyon: 'Şantiye Şefi' },
-    { id: 2, ad: 'Hatice', soyad: 'Şahin', departman_ad: 'İdari İşler', pozisyon: 'İdari İşler Uzmanı' },
-    { id: 3, ad: 'Ayşe', soyad: 'Kaya', departman_ad: 'Yazılım', pozisyon: 'Kıdemli Geliştirici' },
-    { id: 4, ad: 'Mehmet', soyad: 'Demir', departman_ad: 'Yazılım', pozisyon: 'Frontend Geliştirici' },
-    { id: 5, ad: 'Ali', soyad: 'Yıldız', departman_ad: 'Muhasebe', pozisyon: 'Muhasebe Müdürü' },
-  ];
-
   async function personeller(yenile = false) {
     if (_personeller && !yenile) return _personeller;
     const d = await api('/personel?limit=100');
-    _personeller = (d ? d.veriler : DEMO_PERSONEL).map(p => ({ ...p, adSoyad: `${p.ad} ${p.soyad}` }));
+    _personeller = d.veriler.map(p => ({ ...p, adSoyad: `${p.ad} ${p.soyad}` }));
     return _personeller;
   }
 
@@ -163,14 +157,9 @@ const Ortak = (() => {
     document.getElementById('content-area').innerHTML = html;
   }
 
-  // Demo modda uyarı şeridi
-  function demoUyari(demoMu) {
-    return demoMu ? `<div class="demo-serit">Demo modu — backend kapalı, değişiklikler kalıcı değil</div>` : '';
-  }
-
   return {
     api, tl, tlTam, sayi, tarih, saatli, bugun, kacir, yonetici, rozet, kalanRozet,
     statGrid, sekmeler, bosSatir, doluluk, modalAc, modalKapat, formVeri, hataGoster,
-    formHata, modalFooter, secenekler, enumSecenek, personeller, icerik, demoUyari,
+    formHata, modalFooter, secenekler, enumSecenek, personeller, icerik,
   };
 })();

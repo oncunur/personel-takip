@@ -8,23 +8,6 @@ const OzetModul = (() => {
   const DURUM_RENK  = { taslak:'#F59E0B', onaylandi:'#4F6EF7', odendi:'#22C55E' };
   const DURUM_METIN = { taslak:'Taslak', onaylandi:'Onaylandı', odendi:'Ödendi' };
 
-  const DEMO_VERI = [
-    { personel_id:1, ad:'Ayşe',   soyad:'Kaya',   departman:'İnsan Kaynakları', pozisyon:'İK Uzmanı',
-      baz_maas:45000, calisilan_gun:22, devamsiz_gun:0, izinli_gun:2, fazla_mesai:4,
-      bordro_id:1, brut_maas:45500,   sgk_isci:6370,   issizlik_isci:455,   gelir_vergisi:6822.45, damga_vergisi:345.40, net_maas:31507.15, bordro_durum:'onaylandi' },
-    { personel_id:2, ad:'Mehmet', soyad:'Demir',  departman:'Yazılım',          pozisyon:'Kıdemli Geliştirici',
-      baz_maas:65000, calisilan_gun:20, devamsiz_gun:1, izinli_gun:1, fazla_mesai:12,
-      bordro_id:2, brut_maas:70900,   sgk_isci:9926,   issizlik_isci:709,   gelir_vergisi:14285.50,damga_vergisi:538.33, net_maas:45441.17, bordro_durum:'taslak' },
-    { personel_id:3, ad:'Zeynep', soyad:'Arslan', departman:'Muhasebe',         pozisyon:'Muhasebe Uzmanı',
-      baz_maas:42000, calisilan_gun:22, devamsiz_gun:0, izinli_gun:0, fazla_mesai:0,
-      bordro_id:3, brut_maas:42000,   sgk_isci:5880,   issizlik_isci:420,   gelir_vergisi:5292,    damga_vergisi:318.78, net_maas:30089.22, bordro_durum:'odendi' },
-    { personel_id:4, ad:'Ali',    soyad:'Yıldız', departman:'Yazılım',          pozisyon:'Junior Geliştirici',
-      baz_maas:32000, calisilan_gun:21, devamsiz_gun:1, izinli_gun:0, fazla_mesai:2,
-      bordro_id:null, brut_maas:null, sgk_isci:null, issizlik_isci:null, gelir_vergisi:null, damga_vergisi:null, net_maas:null, bordro_durum:null },
-    { personel_id:5, ad:'Fatma',  soyad:'Çelik',  departman:'İnsan Kaynakları', pozisyon:'İK Asistanı',
-      baz_maas:28000, calisilan_gun:22, devamsiz_gun:0, izinli_gun:0, fazla_mesai:0,
-      bordro_id:5, brut_maas:28000,   sgk_isci:3920,   issizlik_isci:280,   gelir_vergisi:3108,    damga_vergisi:212.52, net_maas:20479.48, bordro_durum:'onaylandi' },
-  ];
 
   function tl(n) {
     if (n == null) return '—';
@@ -33,14 +16,20 @@ const OzetModul = (() => {
 
   async function apiFetch(url) {
     const token = Auth.getToken();
+    let res;
     try {
-      const res = await fetch('http://localhost:8000' + url, {
+      res = await fetch('http://localhost:8000' + url, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(4000),
       });
-      if (!res.ok) return null;
-      return res.json();
-    } catch(e) { return null; }
+    } catch (e) {
+      throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+    }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.detail || 'İşlem başarısız');
+    }
+    return res.json();
   }
 
   function durumBadge(durum) {
@@ -128,7 +117,7 @@ const OzetModul = (() => {
       `<div style="padding:48px;text-align:center;color:var(--gray-400)">Yükleniyor…</div>`;
     document.getElementById('ozet-donem-lbl').textContent = `${AYLAR[secilenAy-1]} ${secilenYil}`;
     const data = await apiFetch(`/ozet/aylik?yil=${secilenYil}&ay=${secilenAy}`);
-    tabloRender(data ? data.veriler : DEMO_VERI);
+    tabloRender(data.veriler);
   }
 
   return {
@@ -172,7 +161,7 @@ const OzetModul = (() => {
 
     async exportCSV() {
       const data = await apiFetch(`/ozet/aylik?yil=${secilenYil}&ay=${secilenAy}`);
-      const veriler = data ? data.veriler : DEMO_VERI;
+      const veriler = data.veriler;
       const baslik = ['Ad Soyad','Departman','Pozisyon','Çalışılan Gün','Devamsız','İzinli','FM (s)','Brüt Maaş','Kesintiler','Net Maaş','Bordro Durum'];
       const satirlar = [baslik, ...veriler.map(v => {
         const kes = v.brut_maas ? ((v.sgk_isci||0)+(v.issizlik_isci||0)+(v.gelir_vergisi||0)+(v.damga_vergisi||0)).toFixed(2) : '';

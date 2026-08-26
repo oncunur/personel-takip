@@ -2,19 +2,11 @@
 const BordroModul = (() => {
   const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   let personeller = [];
+  let bordrolar = [];
 
   const DURUM_RENK   = { taslak:'#F59E0B', onaylandi:'#22C55E', odendi:'#4F6EF7' };
   const DURUM_ETIKET = { taslak:'Taslak', onaylandi:'Onaylandı', odendi:'Ödendi' };
 
-  const DEMO_BORDROLAR = [
-    { id:1, personel_id:1, personel_ad:'Ayşe Kaya', personel_departman:'Yazılım', yil:2026, ay:5, baz_maas:45000, fazla_mesai_ucr:0, prim:2000, diger_eklemeler:0, brut_maas:47000, sgk_isci:6580, issizlik_isci:470, gelir_vergisi:6075, damga_vergisi:356.73, net_maas:33518.27, calisilan_gun:22, fazla_mesai_saat:0, durum:'onaylandi', notlar:null },
-    { id:2, personel_id:2, personel_ad:'Mehmet Demir', personel_departman:'Yazılım', yil:2026, ay:5, baz_maas:38000, fazla_mesai_ucr:1296.59, prim:0, diger_eklemeler:0, brut_maas:39296.59, sgk_isci:5501.52, issizlik_isci:392.97, gelir_vergisi:4979.51, damga_vergisi:298.26, net_maas:28124.33, calisilan_gun:22, fazla_mesai_saat:8, durum:'taslak', notlar:null },
-    { id:3, personel_id:3, personel_ad:'Zeynep Arslan', personel_departman:'İnsan Kaynakları', yil:2026, ay:5, baz_maas:35000, fazla_mesai_ucr:0, prim:0, diger_eklemeler:0, brut_maas:35000, sgk_isci:4900, issizlik_isci:350, gelir_vergisi:4350, damga_vergisi:265.65, net_maas:25134.35, calisilan_gun:19, fazla_mesai_saat:0, durum:'odendi', notlar:'Mart hastalık izni nedeniyle 19 gün' },
-  ];
-  const DEMO_PERSONEL = [
-    { id:1, ad:'Ayşe', soyad:'Kaya', maas:45000 }, { id:2, ad:'Mehmet', soyad:'Demir', maas:38000 },
-    { id:3, ad:'Zeynep', soyad:'Arslan', maas:35000 }, { id:4, ad:'Ali', soyad:'Yıldız', maas:52000 }, { id:5, ad:'Fatma', soyad:'Çelik', maas:58000 },
-  ];
 
   function tl(n) { return '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 
@@ -26,10 +18,13 @@ const BordroModul = (() => {
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Hata'); }
-      if (res.status === 204) return null;
+      if (res.status === 204) return { _bos: true };
       return res.json();
     } catch(e) {
-      if (e.name==='TimeoutError'||e.name==='TypeError') return null;
+      // Ağ/zaman aşımı hatası: sahte veriye düşmek yerine açıkça bildir.
+      if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') {
+        throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+      }
       throw e;
     }
   }
@@ -81,12 +76,13 @@ const BordroModul = (() => {
   async function yukleVeRender(filtreler = {}) {
     const params = new URLSearchParams(filtreler).toString();
     const data = await apiFetch(`/bordro?${params}&limit=50`);
-    listeRender(data ? data.veriler : DEMO_BORDROLAR);
+    bordrolar = data.veriler;
+    listeRender(bordrolar);
   }
 
   function hesaplamaFormHtml() {
     const bugun = new Date();
-    const pOptions = (personeller.length ? personeller : DEMO_PERSONEL)
+    const pOptions = (personeller)
       .map(p => `<option value="${p.id}" data-maas="${p.maas||0}">${p.ad} ${p.soyad}</option>`).join('');
     return `
       <form id="bordro-form" class="modal-form">
@@ -146,7 +142,7 @@ const BordroModul = (() => {
   return {
     async yukle() {
       const pData = await apiFetch('/personel?limit=100');
-      personeller = pData ? pData.veriler : DEMO_PERSONEL;
+      personeller = pData.veriler;
 
       const bugun = new Date();
       document.getElementById('content-area').innerHTML = `
@@ -230,8 +226,7 @@ const BordroModul = (() => {
         };
         const hata = document.getElementById('bordro-form-hata');
         try {
-          const res = await apiFetch('/bordro', { method:'POST', body: JSON.stringify(veri) });
-          if (!res) DEMO_BORDROLAR.unshift({ id: Date.now(), personel_ad: 'Yeni Personel', personel_departman:'', durum:'taslak', ...veri, brut_maas: veri.baz_maas, net_maas: veri.baz_maas * 0.7, sgk_isci: veri.baz_maas * 0.14, gelir_vergisi: veri.baz_maas * 0.15, fazla_mesai_ucr: 0 });
+          await apiFetch('/bordro', { method:'POST', body: JSON.stringify(veri) });
           this.modalKapat();
           yukleVeRender();
         } catch(err) { hata.textContent = err.message; hata.classList.remove('gizli'); }
@@ -273,7 +268,7 @@ const BordroModul = (() => {
     },
 
     detayAc(id) {
-      const b = DEMO_BORDROLAR.find(x => x.id === id) || {};
+      const b = bordrolar.find(x => x.id === id) || {};
       document.getElementById('bordro-modal-baslik').textContent = `${b.personel_ad} — ${AYLAR[(b.ay||1)-1]} ${b.yil}`;
       document.getElementById('bordro-modal-icerik').innerHTML = `
         <div class="detay-grid">
@@ -299,7 +294,6 @@ const BordroModul = (() => {
     async onayla(id) {
       try {
         await apiFetch(`/bordro/${id}`, { method:'PUT', body: JSON.stringify({ durum:'onaylandi' }) });
-        const b = DEMO_BORDROLAR.find(x => x.id === id); if (b) b.durum = 'onaylandi';
         yukleVeRender();
       } catch(err) { alert(err.message); }
     },
@@ -308,7 +302,6 @@ const BordroModul = (() => {
       if (!confirm('Bu bordroyu "Ödendi" olarak işaretlemek istediğinizden emin misiniz?')) return;
       try {
         await apiFetch(`/bordro/${id}`, { method:'PUT', body: JSON.stringify({ durum:'odendi' }) });
-        const b = DEMO_BORDROLAR.find(x => x.id === id); if (b) b.durum = 'odendi';
         yukleVeRender();
       } catch(err) { alert(err.message); }
     },
@@ -317,7 +310,6 @@ const BordroModul = (() => {
       if (!confirm('Bu bordroyu silmek istediğinizden emin misiniz?')) return;
       try {
         await apiFetch(`/bordro/${id}`, { method:'DELETE' });
-        const idx = DEMO_BORDROLAR.findIndex(x => x.id === id); if (idx >= 0) DEMO_BORDROLAR.splice(idx, 1);
         yukleVeRender();
       } catch(err) { alert(err.message); }
     },

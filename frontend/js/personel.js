@@ -7,20 +7,6 @@ const PersonelModul = (() => {
   let filtreDurum = '';
   let duzenleId = null;
 
-  // Demo verisi (backend olmadığında)
-  const DEMO_PERSONEL = [
-    { id:1, ad:'Ayşe', soyad:'Kaya', email:'ayse@sirket.com', telefon:'0532 111 22 33', departman_id:1, departman_ad:'Yazılım', pozisyon:'Kıdemli Geliştirici', durum:'aktif', cinsiyet:'kadin', ise_baslama_tarihi:'2021-03-15', maas:45000 },
-    { id:2, ad:'Mehmet', soyad:'Demir', email:'mehmet@sirket.com', telefon:'0533 222 33 44', departman_id:1, departman_ad:'Yazılım', pozisyon:'Frontend Geliştirici', durum:'aktif', cinsiyet:'erkek', ise_baslama_tarihi:'2022-07-01', maas:38000 },
-    { id:3, ad:'Zeynep', soyad:'Arslan', email:'zeynep@sirket.com', telefon:'0535 333 44 55', departman_id:2, departman_ad:'İnsan Kaynakları', pozisyon:'İK Uzmanı', durum:'aktif', cinsiyet:'kadin', ise_baslama_tarihi:'2020-01-10', maas:35000 },
-    { id:4, ad:'Ali', soyad:'Yıldız', email:'ali@sirket.com', telefon:'0536 444 55 66', departman_id:3, departman_ad:'Muhasebe', pozisyon:'Muhasebe Müdürü', durum:'izinli', cinsiyet:'erkek', ise_baslama_tarihi:'2019-06-20', maas:52000 },
-    { id:5, ad:'Fatma', soyad:'Çelik', email:'fatma@sirket.com', telefon:'0537 555 66 77', departman_id:2, departman_ad:'İnsan Kaynakları', pozisyon:'İK Müdürü', durum:'aktif', cinsiyet:'kadin', ise_baslama_tarihi:'2018-11-05', maas:58000 },
-  ];
-  const DEMO_DEPARTMANLAR = [
-    { id:1, ad:'Yazılım', aciklama:'Yazılım geliştirme ekibi', personel_sayisi:2 },
-    { id:2, ad:'İnsan Kaynakları', aciklama:'İK departmanı', personel_sayisi:2 },
-    { id:3, ad:'Muhasebe', aciklama:'Finans ve muhasebe', personel_sayisi:1 },
-    { id:4, ad:'Pazarlama', aciklama:'Pazarlama ve reklam', personel_sayisi:0 },
-  ];
 
   const durumRenk = { aktif:'#22C55E', pasif:'#9CA3AF', izinli:'#F59E0B' };
   const durumEtiket = { aktif:'Aktif', pasif:'Pasif', izinli:'İzinli' };
@@ -36,17 +22,20 @@ const PersonelModul = (() => {
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Hata'); }
-      if (res.status === 204) return null;
+      if (res.status === 204) return { _bos: true };
       return res.json();
     } catch(e) {
-      if (e.name === 'TimeoutError' || e.name === 'TypeError') return null; // demo moda düş
+      // Ağ/zaman aşımı hatası: sahte veriye düşmek yerine açıkça bildir.
+      if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') {
+        throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+      }
       throw e;
     }
   }
 
   async function departmanlariYukle() {
     const data = await apiFetch('/personel/departmanlar');
-    departmanlar = data || DEMO_DEPARTMANLAR;
+    departmanlar = data;
   }
 
   async function listeyiYukle() {
@@ -56,14 +45,8 @@ const PersonelModul = (() => {
     if (filtreDurum) params.set('durum', filtreDurum);
 
     const data = await apiFetch(`/personel?${params}`);
-    const liste = data
-      ? data.veriler
-      : DEMO_PERSONEL.filter(p =>
-          (!aramaTxt || `${p.ad} ${p.soyad} ${p.email} ${p.pozisyon||''}`.toLowerCase().includes(aramaTxt.toLowerCase())) &&
-          (!filtreDurum || p.durum === filtreDurum) &&
-          (!filtreDepartman || p.departman_id == filtreDepartman)
-        );
-    const toplam = data ? data.toplam : liste.length;
+    const liste = data.veriler;
+    const toplam = data.toplam;
     listeRender(liste, toplam);
   }
 
@@ -255,8 +238,7 @@ const PersonelModul = (() => {
         const veri = formDegerlerAl(e.target);
         const hata = document.getElementById('form-hata');
         try {
-          const res = await apiFetch('/personel', { method:'POST', body: JSON.stringify(veri) });
-          if (!res) { DEMO_PERSONEL.push({ id: Date.now(), durum:'aktif', cinsiyet: veri.cinsiyet||'belirtilmemis', departman_ad: departmanlar.find(d=>d.id==veri.departman_id)?.ad, ...veri }); }
+          await apiFetch('/personel', { method:'POST', body: JSON.stringify(veri) });
           this.modalKapat();
           listeyiYukle();
         } catch(err) {
@@ -268,7 +250,7 @@ const PersonelModul = (() => {
 
     async duzenleAc(id) {
       duzenleId = id;
-      const p = await apiFetch(`/personel/${id}`) || DEMO_PERSONEL.find(x=>x.id===id) || {};
+      const p = await apiFetch(`/personel/${id}`)(x=>x.id===id) || {};
       document.getElementById('modal-baslik').textContent = 'Personel Düzenle';
       document.getElementById('modal-icerik').innerHTML = formHtml(p);
       document.getElementById('personel-modal').classList.remove('gizli');
@@ -277,8 +259,7 @@ const PersonelModul = (() => {
         const veri = formDegerlerAl(e.target);
         const hata = document.getElementById('form-hata');
         try {
-          const res = await apiFetch(`/personel/${id}`, { method:'PUT', body: JSON.stringify(veri) });
-          if (!res) { const idx = DEMO_PERSONEL.findIndex(x=>x.id===id); if(idx>=0) Object.assign(DEMO_PERSONEL[idx], veri); }
+          await apiFetch(`/personel/${id}`, { method:'PUT', body: JSON.stringify(veri) });
           this.modalKapat();
           listeyiYukle();
         } catch(err) {
@@ -289,7 +270,7 @@ const PersonelModul = (() => {
     },
 
     async detayAc(id) {
-      const p = await apiFetch(`/personel/${id}`) || DEMO_PERSONEL.find(x=>x.id===id) || {};
+      const p = await apiFetch(`/personel/${id}`)(x=>x.id===id) || {};
       document.getElementById('modal-baslik').textContent = `${p.ad} ${p.soyad}`;
       document.getElementById('modal-icerik').innerHTML = `
         <div class="detay-grid">
@@ -317,8 +298,6 @@ const PersonelModul = (() => {
       if (!confirm(`"${ad}" adlı personeli pasife almak istediğinizden emin misiniz?`)) return;
       try {
         await apiFetch(`/personel/${id}`, { method:'DELETE' });
-        const idx = DEMO_PERSONEL.findIndex(x=>x.id===id);
-        if(idx>=0) DEMO_PERSONEL[idx].durum = 'pasif';
         listeyiYukle();
       } catch(err) { alert(err.message); }
     },

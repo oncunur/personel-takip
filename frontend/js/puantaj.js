@@ -12,34 +12,6 @@ const PuantajModul = (() => {
   const DURUM_METIN  = { tam:'Tam', yarim:'Yarım', devamsiz:'Devamsız', izinli:'İzinli', resmi_tatil:'Resmi Tatil', hafta_sonu:'Hf. Sonu' };
   const DURUM_YAZI   = { tam:'white', yarim:'white', devamsiz:'white', izinli:'white', resmi_tatil:'white', hafta_sonu:'#9CA3AF' };
 
-  const DEMO_PERSONEL = [
-    { id:1, ad:'Ayşe', soyad:'Kaya' }, { id:2, ad:'Mehmet', soyad:'Demir' },
-    { id:3, ad:'Zeynep', soyad:'Arslan' }, { id:4, ad:'Ali', soyad:'Yıldız' }, { id:5, ad:'Fatma', soyad:'Çelik' },
-  ];
-
-  function demoPuantaj(pid, yil, ay) {
-    const gunSayisi = new Date(yil, ay, 0).getDate();
-    const gunler = [];
-    for (let g = 1; g <= gunSayisi; g++) {
-      const d = new Date(yil, ay - 1, g);
-      const hftSonu = d.getDay() === 0 || d.getDay() === 6;
-      let durum = hftSonu ? 'hafta_sonu' : 'tam';
-      if (!hftSonu && Math.random() < 0.05) durum = 'devamsiz';
-      if (!hftSonu && Math.random() < 0.05) durum = 'izinli';
-      gunler.push({
-        id: null, personel_id: pid,
-        tarih: `${yil}-${String(ay).padStart(2,'0')}-${String(g).padStart(2,'0')}`,
-        giris_saati: (!hftSonu && durum === 'tam') ? '09:00' : null,
-        cikis_saati: (!hftSonu && durum === 'tam') ? '18:00' : null,
-        durum, fazla_mesai: 0, notlar: null,
-      });
-    }
-    const cal = gunler.filter(g => g.durum === 'tam' || g.durum === 'yarim');
-    const dev = gunler.filter(g => g.durum === 'devamsiz');
-    const izn = gunler.filter(g => g.durum === 'izinli');
-    return { personel_id: pid, yil, ay, calisilan_gun: cal.length, devamsiz_gun: dev.length, izinli_gun: izn.length, toplam_fazla_mesai: 0, gunler };
-  }
-
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
     try {
@@ -48,10 +20,13 @@ const PuantajModul = (() => {
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Hata'); }
-      if (res.status === 204) return null;
+      if (res.status === 204) return { _bos: true };
       return res.json();
     } catch(e) {
-      if (e.name === 'TimeoutError' || e.name === 'TypeError') return null;
+      // Ağ/zaman aşımı hatası: sahte veriye düşmek yerine açıkça bildir.
+      if (e.name === 'TimeoutError' || e.name === 'TypeError' || e.name === 'AbortError') {
+        throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+      }
       throw e;
     }
   }
@@ -93,13 +68,13 @@ const PuantajModul = (() => {
     if (!secilenPersonel) return;
     document.getElementById('pt-takvim').innerHTML = `<div style="padding:40px;text-align:center;color:var(--gray-400)">Yükleniyor...</div>`;
     const data = await apiFetch(`/puantaj/aylik?personel_id=${secilenPersonel}&yil=${secilenYil}&ay=${secilenAy}`);
-    takvimRender(data || demoPuantaj(secilenPersonel, secilenYil, secilenAy));
+    takvimRender(data);
   }
 
   return {
     async yukle() {
       const pData = await apiFetch('/personel?limit=100');
-      personeller = pData ? pData.veriler : DEMO_PERSONEL;
+      personeller = pData.veriler;
       secilenPersonel = personeller[0]?.id || null;
 
       document.getElementById('content-area').innerHTML = `
@@ -204,7 +179,7 @@ const PuantajModul = (() => {
 
     async exportCSV() {
       const data = await apiFetch(`/puantaj/aylik?personel_id=${secilenPersonel}&yil=${secilenYil}&ay=${secilenAy}`);
-      const veri = data || demoPuantaj(secilenPersonel, secilenYil, secilenAy);
+      const veri = data;
       const satirlar = [
         ['Tarih','Durum','Giriş','Çıkış','Fazla Mesai'],
         ...veri.gunler.map(g => [g.tarih, DURUM_METIN[g.durum]||'', g.giris_saati||'', g.cikis_saati||'', g.fazla_mesai||0]),

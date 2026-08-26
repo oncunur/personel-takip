@@ -747,17 +747,6 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .btn-mini.ret { border-color: #FECACA; color: #DC2626; background: #FEF2F2; }
 .btn-mini.ret:hover { background: #FEE2E2; }
 
-/* Demo şeridi */
-.demo-serit {
-  background: #FFFBEB;
-  border: 1px solid #FDE68A;
-  color: #92400E;
-  border-radius: var(--radius);
-  padding: 8px 14px;
-  font-size: 12px;
-  margin-bottom: 14px;
-}
-
 /* Satır içi ikincil bilgi */
 .hucre-alt { display: block; font-size: 11px; color: var(--gray-400); margin-top: 1px; }
 

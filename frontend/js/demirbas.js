@@ -2,50 +2,23 @@
 const DemirbasModul = (() => {
   const O = Ortak;
   let sekme = 'demirbaslar';
-  let demirbaslar = [], zimmetler = [], ozet = null, demo = false;
+  let demirbaslar = [], zimmetler = [], ozet = null;
   let arama = '', filtreDurum = '', filtreKategori = '';
 
   const DURUM = { depoda: 'Depoda', zimmetli: 'Zimmetli', bakimda: 'Bakımda', hurda: 'Hurda', kayip: 'Kayıp' };
   const DURUM_RENK = { depoda: '#6B7280', zimmetli: '#4F6EF7', bakimda: '#F59E0B', hurda: '#9CA3AF', kayip: '#EF4444' };
 
-  const DEMO_DEMIRBAS = [
-    { id:1, kod:'DMB-0001', ad:'MacBook Pro 14"', kategori:'Bilgisayar', marka:'Apple', model:'M3 Pro', seri_no:'C02XY1234', alis_tarihi:'2026-01-20', alis_bedeli:95000, garanti_bitis:'2028-01-20', garanti_aktif:true, durum:'zimmetli', lokasyon:'Merkez Ofis', zimmet_id:1, zimmetli_personel_id:1, zimmetli_personel:'Kemal Yılmaz', zimmet_tarihi:'2026-02-05' },
-    { id:2, kod:'DMB-0002', ad:'iPhone 15', kategori:'Telefon', marka:'Apple', model:'15 128GB', seri_no:'F9XK5566', alis_tarihi:'2026-02-10', alis_bedeli:52000, garanti_bitis:'2027-02-10', garanti_aktif:true, durum:'zimmetli', lokasyon:'Merkez Ofis', zimmet_id:2, zimmetli_personel_id:2, zimmetli_personel:'Hatice Şahin', zimmet_tarihi:'2026-02-12' },
-    { id:3, kod:'DMB-0003', ad:'Çalışma Masası', kategori:'Mobilya', marka:'Bürosit', model:'160x80', seri_no:null, alis_tarihi:'2025-11-05', alis_bedeli:8500, garanti_bitis:null, garanti_aktif:false, durum:'depoda', lokasyon:'Depo', zimmet_id:null, zimmetli_personel:null },
-    { id:4, kod:'DMB-0004', ad:'Lazer Metre', kategori:'Saha Ekipmanı', marka:'Bosch', model:'GLM 50', seri_no:'BS-99120', alis_tarihi:'2026-03-01', alis_bedeli:4200, garanti_bitis:'2028-03-01', garanti_aktif:true, durum:'bakimda', lokasyon:'Şantiye', zimmet_id:null, zimmetli_personel:null },
-  ];
-  const DEMO_ZIMMET = [
-    { id:1, demirbas_id:1, demirbas_kod:'DMB-0001', demirbas_ad:'MacBook Pro 14"', kategori:'Bilgisayar', personel_id:1, personel_ad:'Kemal Yılmaz', departman:'İdari İşler', veris_tarihi:'2026-02-05', iade_tarihi:null, gun_sayisi:198, aktif:true },
-    { id:2, demirbas_id:2, demirbas_kod:'DMB-0002', demirbas_ad:'iPhone 15', kategori:'Telefon', personel_id:2, personel_ad:'Hatice Şahin', departman:'İdari İşler', veris_tarihi:'2026-02-12', iade_tarihi:null, gun_sayisi:191, aktif:true },
-  ];
-
-  function demoOzet() {
-    const s = {};
-    demirbaslar.forEach(d => { s[d.durum] = (s[d.durum] || 0) + 1; });
-    return {
-      toplam: demirbaslar.length,
-      zimmetli: s.zimmetli || 0, depoda: s.depoda || 0, bakimda: s.bakimda || 0,
-      hurda: s.hurda || 0, kayip: s.kayip || 0,
-      toplam_deger: demirbaslar.reduce((t, d) => t + Number(d.alis_bedeli || 0), 0),
-      durum_dagilim: s,
-    };
-  }
 
   async function veriYukle() {
     const [dd, zd, od] = await Promise.all([
       O.api('/demirbas'), O.api('/demirbas/zimmet/liste?sadece_aktif=false'), O.api('/demirbas/ozet'),
     ]);
-    demo = !dd;
-    if (demo) {
-      if (!demirbaslar.length) { demirbaslar = [...DEMO_DEMIRBAS]; zimmetler = [...DEMO_ZIMMET]; }
-      ozet = demoOzet();
-    } else { demirbaslar = dd.veriler; zimmetler = zd.veriler; ozet = od; }
+    demirbaslar = dd.veriler; zimmetler = zd.veriler; ozet = od;
   }
 
   function render() {
     const y = O.yonetici();
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Toplam Demirbaş', deger: ozet.toplam, alt: O.tl(ozet.toplam_deger) + ' değerinde' },
         { label: 'Zimmetli', deger: ozet.zimmetli, alt: 'personelde', renk: '#4F6EF7' },
@@ -188,11 +161,7 @@ const DemirbasModul = (() => {
         try {
           const s = id ? await O.api(`/demirbas/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
                        : await O.api('/demirbas', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            if (id) Object.assign(demirbaslar.find(x => x.id === id), veri);
-            else demirbaslar.push({ id: Date.now(), kod: `DMB-${String(demirbaslar.length + 1).padStart(4, '0')}`, durum: 'depoda', garanti_aktif: !!veri.garanti_bitis, zimmet_id: null, zimmetli_personel: null, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -222,14 +191,7 @@ const DemirbasModul = (() => {
         const veri = O.formVeri(e.target, ['demirbas_id', 'personel_id']);
         try {
           const s = await O.api('/demirbas/zimmet', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const d = demirbaslar.find(x => x.id === veri.demirbas_id);
-            const p = pers.find(x => x.id === veri.personel_id);
-            const zid = Date.now();
-            zimmetler.unshift({ id: zid, demirbas_id: d.id, demirbas_kod: d.kod, demirbas_ad: d.ad, kategori: d.kategori, personel_id: p.id, personel_ad: p.adSoyad, departman: p.departman_ad, veris_tarihi: veri.veris_tarihi, iade_tarihi: null, gun_sayisi: 0, aktif: true });
-            Object.assign(d, { durum: 'zimmetli', zimmet_id: zid, zimmetli_personel_id: p.id, zimmetli_personel: p.adSoyad, zimmet_tarihi: veri.veris_tarihi });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -256,12 +218,7 @@ const DemirbasModul = (() => {
         const veri = O.formVeri(e.target);
         try {
           const s = await O.api(`/demirbas/zimmet/${zimmetId}/iade`, { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            z.aktif = false; z.iade_tarihi = veri.iade_tarihi;
-            const d = demirbaslar.find(x => x.id === z.demirbas_id);
-            if (d) Object.assign(d, { durum: veri.durum, zimmet_id: null, zimmetli_personel: null, zimmetli_personel_id: null, zimmet_tarihi: null });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };

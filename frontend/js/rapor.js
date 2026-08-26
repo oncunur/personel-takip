@@ -5,14 +5,6 @@ const RaporModul = (() => {
   const AYLAR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
   const RENKLER = ['#4F6EF7','#22C55E','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316'];
 
-  // ─── Demo verisi ────────────────────────────────────────────────
-  const DEMO = {
-    genel: { toplam_personel:5, aktif_personel:4, izinli_personel:1, toplam_departman:4, bekleyen_izin:2, bu_ay_izin:1 },
-    dep: [{ departman:'Yazılım', sayi:2 },{ departman:'İnsan Kaynakları', sayi:2 },{ departman:'Muhasebe', sayi:1 },{ departman:'Pazarlama', sayi:0 }],
-    turDagilim: [{ tur:'yillik', sayi:3, toplam_gun:20 },{ tur:'mazeret', sayi:1, toplam_gun:1 },{ tur:'hastalik', sayi:1, toplam_gun:3 }],
-    trend: AYLAR.map((_,i) => ({ ay:i+1, talep_sayisi:[0,0,1,0,1,1,1,1,0,0,0,0][i], toplam_gun:[0,0,5,0,3,5,1,10,0,0,0,0][i] })),
-    durumDagilim: [{ durum:'aktif', sayi:4 },{ durum:'izinli', sayi:1 },{ durum:'pasif', sayi:0 }],
-  };
 
   const TUR_ETIKET = { yillik:'Yıllık', mazeret:'Mazeret', hastalik:'Hastalık', ucretsiz:'Ücretsiz', dogum:'Doğum', olum:'Ölüm', diger:'Diğer' };
   const DURUM_RENK = { aktif:'#22C55E', izinli:'#F59E0B', pasif:'#9CA3AF' };
@@ -20,14 +12,20 @@ const RaporModul = (() => {
 
   async function apiFetch(url) {
     const token = Auth.getToken();
+    let res;
     try {
-      const res = await fetch('http://localhost:8000' + url, {
-        headers: { Authorization: `Bearer ${token}` },
+      res = await fetch('http://localhost:8000' + url, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(4000),
       });
-      if (!res.ok) return null;
-      return res.json();
-    } catch { return null; }
+    } catch (e) {
+      throw new Error('Sunucuya ulaşılamıyor. Backend çalışıyor mu?');
+    }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.detail || 'İşlem başarısız');
+    }
+    return res.json();
   }
 
   function grafikleriTemizle() {
@@ -205,12 +203,12 @@ const RaporModul = (() => {
         apiFetch('/rapor/personel-durum'),
       ]);
 
-      genelKartlarRender(genel || DEMO.genel);
+      genelKartlarRender(genel);
       grafiklerRender(
-        dep        || DEMO.dep,
-        turDagilim || DEMO.turDagilim,
-        trend      || DEMO.trend,
-        durumDagilim || DEMO.durumDagilim,
+        dep       ,
+        turDagilim,
+        trend     ,
+        durumDagilim,
       );
     },
 

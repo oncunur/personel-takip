@@ -2,24 +2,9 @@
 const ZiyaretciModul = (() => {
   const O = Ortak;
   let sekme = 'ziyaretciler';
-  let ziyaretciler = [], odalar = [], rezervasyonlar = [], demo = false;
+  let ziyaretciler = [], odalar = [], rezervasyonlar = [];
   let arama = '', sadeceIcerde = false, secilenTarih = '';
 
-  const DEMO_ZIYARETCI = [
-    { id:1, ad_soyad:'Murat Aydın', firma:'XYZ İnşaat', telefon:'0555 111 22 33', ziyaret_edilen:'Kemal Yılmaz', amac:'Teklif görüşmesi', giris_zamani:'2026-08-22T08:40:00', cikis_zamani:null, icerde:true, kart_no:'Z-07' },
-    { id:2, ad_soyad:'Selin Korkmaz', firma:'Mali Müşavirlik', telefon:'0532 777 88 99', ziyaret_edilen:'Ali Yıldız', amac:'Beyanname teslimi', giris_zamani:'2026-08-22T09:15:00', cikis_zamani:'2026-08-22T10:05:00', icerde:false, kart_no:'Z-03' },
-    { id:3, ad_soyad:'Onur Kaya', firma:'Bilgi Teknolojileri', telefon:'0533 222 11 44', ziyaret_edilen:'Hatice Şahin', amac:'Sunucu bakımı', giris_zamani:'2026-08-21T14:00:00', cikis_zamani:'2026-08-21T17:30:00', icerde:false, kart_no:'Z-01' },
-  ];
-  const DEMO_ODALAR = [
-    { id:1, ad:'Toplantı Odası 1', konum:'2. Kat', kapasite:10, ekipman:'Projeksiyon, TV', aktif:true, bugunku_rezervasyon:2 },
-    { id:2, ad:'Yönetim Toplantı Odası', konum:'3. Kat', kapasite:6, ekipman:'Telekonferans', aktif:true, bugunku_rezervasyon:1 },
-    { id:3, ad:'Şantiye Brifing Odası', konum:'Şantiye', kapasite:20, ekipman:'Beyaz tahta', aktif:true, bugunku_rezervasyon:0 },
-  ];
-  const DEMO_REZ = [
-    { id:1, oda_id:1, oda_ad:'Toplantı Odası 1', baslik:'Haftalık değerlendirme', tarih:'2026-08-22', baslangic_saat:'10:00', bitis_saat:'11:30', olusturan:'Hatice Şahin', katilimci_sayisi:8, iptal:false },
-    { id:2, oda_id:1, oda_ad:'Toplantı Odası 1', baslik:'Tedarikçi görüşmesi', tarih:'2026-08-22', baslangic_saat:'14:00', bitis_saat:'15:00', olusturan:'Kemal Yılmaz', katilimci_sayisi:4, iptal:false },
-    { id:3, oda_id:2, oda_ad:'Yönetim Toplantı Odası', baslik:'Bütçe revizyonu', tarih:'2026-08-22', baslangic_saat:'09:00', bitis_saat:'10:00', olusturan:'Ali Yıldız', katilimci_sayisi:5, iptal:false },
-  ];
 
   async function veriYukle() {
     if (!secilenTarih) secilenTarih = O.bugun();
@@ -27,14 +12,11 @@ const ZiyaretciModul = (() => {
       O.api('/ziyaretci'), O.api('/ziyaretci/odalar'),
       O.api(`/ziyaretci/rezervasyonlar?tarih=${secilenTarih}`),
     ]);
-    demo = !zd;
-    if (demo) {
-      if (!ziyaretciler.length) { ziyaretciler = [...DEMO_ZIYARETCI]; odalar = [...DEMO_ODALAR]; rezervasyonlar = [...DEMO_REZ]; }
-    } else { ziyaretciler = zd.veriler; odalar = od; rezervasyonlar = rd.veriler; }
+    ziyaretciler = zd.veriler; odalar = od; rezervasyonlar = rd.veriler;
   }
 
   function gunlukRez() {
-    return rezervasyonlar.filter(r => !r.iptal && (!demo || r.tarih === secilenTarih));
+    return rezervasyonlar.filter(r => !r.iptal);
   }
 
   function render() {
@@ -42,7 +24,6 @@ const ZiyaretciModul = (() => {
     const icerde = ziyaretciler.filter(z => z.icerde).length;
     const bugunkuZiyaret = ziyaretciler.filter(z => (z.giris_zamani || '').slice(0, 10) === O.bugun()).length;
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Şu An İçeride', deger: icerde, alt: 'çıkış yapmamış ziyaretçi', renk: icerde ? '#F59E0B' : '#22C55E' },
         { label: 'Bugünkü Ziyaret', deger: bugunkuZiyaret, alt: 'toplam giriş' },
@@ -145,7 +126,8 @@ const ZiyaretciModul = (() => {
 
     document.getElementById('zyr-tarih').onchange = async e => {
       secilenTarih = e.target.value;
-      if (!demo) { const r = await O.api(`/ziyaretci/rezervasyonlar?tarih=${secilenTarih}`); if (r) rezervasyonlar = r.veriler; }
+      const r = await O.api(`/ziyaretci/rezervasyonlar?tarih=${secilenTarih}`);
+      rezervasyonlar = r.veriler;
       render();
     };
   }
@@ -175,10 +157,7 @@ const ZiyaretciModul = (() => {
         const veri = O.formVeri(e.target, ['ziyaret_edilen_id']);
         try {
           const s = await O.api('/ziyaretci', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const p = pers.find(x => x.id === veri.ziyaret_edilen_id);
-            ziyaretciler.unshift({ id: Date.now(), ...veri, ziyaret_edilen: p ? p.adSoyad : null, giris_zamani: new Date().toISOString(), cikis_zamani: null, icerde: true });
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -187,8 +166,7 @@ const ZiyaretciModul = (() => {
     async cikis(id) {
       try {
         const s = await O.api(`/ziyaretci/${id}/cikis`, { method: 'POST' });
-        if (!s) { const z = ziyaretciler.find(x => x.id === id); z.cikis_zamani = new Date().toISOString(); z.icerde = false; }
-        else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },

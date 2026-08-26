@@ -2,7 +2,7 @@
 const EvrakModul = (() => {
   const O = Ortak;
   let sekme = 'evraklar';
-  let evraklar = [], sozlesmeler = [], ozet = null, demo = false;
+  let evraklar = [], sozlesmeler = [], ozet = null;
   let arama = '', filtreYon = '', filtreKategori = '', sozArama = '', filtreSozTur = '';
 
   const YON = { gelen: 'Gelen', giden: 'Giden' };
@@ -10,44 +10,16 @@ const EvrakModul = (() => {
   const SOZ_DURUM = { aktif: 'Aktif', suresi_doldu: 'Süresi Doldu', feshedildi: 'Feshedildi' };
   const SOZ_RENK = { aktif: '#22C55E', suresi_doldu: '#9CA3AF', feshedildi: '#EF4444' };
 
-  const DEMO_EVRAK = [
-    { id:1, evrak_no:'GLN-2026-0001', yon:'gelen', tarih:'2026-08-10', konu:'Belediye imar durumu yazısı', gonderen:'Kadıköy Belediyesi', alici:null, kategori:'Resmi Yazı', ilgili_personel:'Hatice Şahin' },
-    { id:2, evrak_no:'GDN-2026-0001', yon:'giden', tarih:'2026-08-12', konu:'İmar itiraz dilekçesi', gonderen:null, alici:'Kadıköy Belediyesi', kategori:'Dilekçe', ilgili_personel:null },
-    { id:3, evrak_no:'GLN-2026-0002', yon:'gelen', tarih:'2026-08-18', konu:'SGK denetim tebligatı', gonderen:'SGK İl Müdürlüğü', alici:null, kategori:'Tebligat', ilgili_personel:'Kemal Yılmaz' },
-  ];
-  const DEMO_SOZLESME = [
-    { id:1, baslik:'Temizlik hizmet sözleşmesi', karsi_taraf:'ABC Temizlik Ltd.', tur:'hizmet', baslangic_tarihi:'2025-09-01', bitis_tarihi:'2026-09-01', kalan_gun:10, uyari:true, bedel:420000, para_birimi:'TRY', uyari_gun:30, durum:'aktif', sorumlu:'Hatice Şahin' },
-    { id:2, baslik:'Merkez ofis kira sözleşmesi', karsi_taraf:'Emlak Yatırım A.Ş.', tur:'kira', baslangic_tarihi:'2024-05-01', bitis_tarihi:'2027-05-01', kalan_gun:252, uyari:false, bedel:1800000, para_birimi:'TRY', uyari_gun:60, durum:'aktif', sorumlu:'Kemal Yılmaz' },
-    { id:3, baslik:'Kaba inşaat taşeron sözleşmesi', karsi_taraf:'Yıldırım İnşaat', tur:'taseron', baslangic_tarihi:'2026-02-01', bitis_tarihi:'2026-11-30', kalan_gun:100, uyari:false, bedel:6500000, para_birimi:'TRY', uyari_gun:30, durum:'aktif', sorumlu:'Kemal Yılmaz' },
-  ];
-
-  function demoOzet() {
-    return {
-      yillik_evrak: evraklar.length,
-      gelen: evraklar.filter(e => e.yon === 'gelen').length,
-      giden: evraklar.filter(e => e.yon === 'giden').length,
-      aktif_sozlesme: sozlesmeler.filter(s => s.durum === 'aktif').length,
-      sozlesme_bedel_toplam: sozlesmeler.filter(s => s.durum === 'aktif').reduce((t, s) => t + Number(s.bedel || 0), 0),
-      sozlesme_uyarilari: sozlesmeler.filter(s => s.durum === 'aktif' && s.uyari)
-        .map(s => ({ id: s.id, baslik: s.baslik, karsi_taraf: s.karsi_taraf, bitis: s.bitis_tarihi, kalan_gun: s.kalan_gun }))
-        .sort((a, b) => a.kalan_gun - b.kalan_gun),
-    };
-  }
 
   async function veriYukle() {
     const [ed, sd, od] = await Promise.all([O.api('/evrak'), O.api('/evrak/sozlesmeler'), O.api('/evrak/ozet')]);
-    demo = !ed;
-    if (demo) {
-      if (!evraklar.length) { evraklar = [...DEMO_EVRAK]; sozlesmeler = [...DEMO_SOZLESME]; }
-      ozet = demoOzet();
-    } else { evraklar = ed.veriler; sozlesmeler = sd.veriler; ozet = od; }
+    evraklar = ed.veriler; sozlesmeler = sd.veriler; ozet = od;
   }
 
   function render() {
     const y = O.yonetici();
     const uyarilar = ozet.sozlesme_uyarilari || [];
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Gelen Evrak', deger: ozet.gelen, alt: 'bu yıl' },
         { label: 'Giden Evrak', deger: ozet.giden, alt: 'bu yıl', renk: '#8B5CF6' },
@@ -198,13 +170,7 @@ const EvrakModul = (() => {
         try {
           const s = id ? await O.api(`/evrak/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
                        : await O.api('/evrak', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const no = veri.evrak_no || `${veri.yon === 'gelen' ? 'GLN' : 'GDN'}-${new Date(veri.tarih).getFullYear()}-${String(evraklar.length + 1).padStart(4, '0')}`;
-            const ilgili = pers.find(p => p.id === veri.ilgili_personel_id);
-            if (id) Object.assign(evraklar.find(x => x.id === id), veri, { evrak_no: no, ilgili_personel: ilgili ? ilgili.adSoyad : null });
-            else evraklar.unshift({ id: Date.now(), ...veri, evrak_no: no, ilgili_personel: ilgili ? ilgili.adSoyad : null });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -214,7 +180,7 @@ const EvrakModul = (() => {
       if (!confirm('Evrak kaydı silinsin mi?')) return;
       try {
         const s = await O.api(`/evrak/${id}`, { method: 'DELETE' });
-        if (!s) { evraklar = evraklar.filter(x => x.id !== id); ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },
@@ -249,14 +215,7 @@ const EvrakModul = (() => {
         try {
           const s = id ? await O.api(`/evrak/sozlesmeler/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
                        : await O.api('/evrak/sozlesmeler', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const kalan = veri.bitis_tarihi ? Math.round((new Date(veri.bitis_tarihi) - new Date()) / 86400000) : null;
-            const sor = pers.find(p => p.id === veri.sorumlu_personel_id);
-            const yeni = { ...veri, kalan_gun: kalan, uyari: kalan !== null && kalan <= (veri.uyari_gun ?? 30), sorumlu: sor ? sor.adSoyad : null, durum: veri.durum || 'aktif' };
-            if (id) Object.assign(sozlesmeler.find(x => x.id === id), yeni);
-            else sozlesmeler.push({ id: Date.now(), ...yeni });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -266,7 +225,7 @@ const EvrakModul = (() => {
       if (!confirm('Sözleşme silinsin mi?')) return;
       try {
         const s = await O.api(`/evrak/sozlesmeler/${id}`, { method: 'DELETE' });
-        if (!s) { sozlesmeler = sozlesmeler.filter(x => x.id !== id); ozet = demoOzet(); } else await veriYukle();
+        await veriYukle();
         render();
       } catch (err) { alert(err.message); }
     },

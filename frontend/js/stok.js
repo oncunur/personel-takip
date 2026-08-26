@@ -2,36 +2,12 @@
 const StokModul = (() => {
   const O = Ortak;
   let sekme = 'urunler';
-  let urunler = [], hareketler = [], ozet = null, demo = false;
+  let urunler = [], hareketler = [], ozet = null;
   let arama = '', filtreKategori = '', sadeceKritik = false, filtreHareketTur = '';
 
   const HAREKET = { giris: 'Giriş', cikis: 'Çıkış', sayim: 'Sayım', fire: 'Fire' };
   const HAREKET_RENK = { giris: '#22C55E', cikis: '#4F6EF7', sayim: '#8B5CF6', fire: '#EF4444' };
 
-  const DEMO_URUNLER = [
-    { id:1, kod:'STK-001', ad:'A4 Fotokopi Kağıdı', kategori:'Kırtasiye', birim:'paket', mevcut_miktar:5, kritik_seviye:10, kritik_mi:true, birim_fiyat:185, toplam_deger:925, raf:'R-1', aktif:true },
-    { id:2, kod:'STK-002', ad:'Toner HP 26A', kategori:'Kırtasiye', birim:'adet', mevcut_miktar:8, kritik_seviye:3, kritik_mi:false, birim_fiyat:2400, toplam_deger:19200, raf:'R-2', aktif:true },
-    { id:3, kod:'STK-003', ad:'Çöp Poşeti 80x110', kategori:'Temizlik', birim:'rulo', mevcut_miktar:42, kritik_seviye:15, kritik_mi:false, birim_fiyat:95, toplam_deger:3990, raf:'D-1', aktif:true },
-    { id:4, kod:'STK-004', ad:'Filtre Kahve 1kg', kategori:'Mutfak', birim:'paket', mevcut_miktar:3, kritik_seviye:5, kritik_mi:true, birim_fiyat:640, toplam_deger:1920, raf:'M-1', aktif:true },
-    { id:5, kod:'STK-005', ad:'İş Eldiveni', kategori:'Saha Sarf', birim:'çift', mevcut_miktar:120, kritik_seviye:40, kritik_mi:false, birim_fiyat:78, toplam_deger:9360, raf:'S-3', aktif:true },
-  ];
-  const DEMO_HAREKETLER = [
-    { id:1, urun_id:1, urun_ad:'A4 Fotokopi Kağıdı', urun_kod:'STK-001', birim:'paket', tur:'cikis', miktar:35, tarih:'2026-08-18', personel_ad:'Kemal Yılmaz', belge_no:null, aciklama:'Şantiye ofisi' },
-    { id:2, urun_id:3, urun_ad:'Çöp Poşeti 80x110', urun_kod:'STK-003', birim:'rulo', tur:'giris', miktar:50, tarih:'2026-08-14', personel_ad:null, belge_no:'FTR-8842', aciklama:'Aylık alım' },
-    { id:3, urun_id:4, urun_ad:'Filtre Kahve 1kg', urun_kod:'STK-004', birim:'paket', tur:'cikis', miktar:2, tarih:'2026-08-20', personel_ad:'Hatice Şahin', belge_no:null, aciklama:'Ofis mutfağı' },
-  ];
-
-  function demoOzet() {
-    const kritikler = urunler.filter(u => u.kritik_mi);
-    return {
-      urun_sayisi: urunler.length,
-      kritik_sayisi: kritikler.length,
-      toplam_deger: urunler.reduce((t, u) => t + Number(u.toplam_deger || 0), 0),
-      ay_giris: hareketler.filter(h => h.tur === 'giris').reduce((t, h) => t + Number(h.miktar), 0),
-      ay_cikis: hareketler.filter(h => h.tur === 'cikis').reduce((t, h) => t + Number(h.miktar), 0),
-      kritik_urunler: kritikler,
-    };
-  }
 
   function guncelleTuretilen(u) {
     u.kritik_mi = Number(u.mevcut_miktar) <= Number(u.kritik_seviye || 0);
@@ -40,18 +16,13 @@ const StokModul = (() => {
 
   async function veriYukle() {
     const [ud, hd, od] = await Promise.all([O.api('/stok'), O.api('/stok/hareketler'), O.api('/stok/ozet')]);
-    demo = !ud;
-    if (demo) {
-      if (!urunler.length) { urunler = [...DEMO_URUNLER]; hareketler = [...DEMO_HAREKETLER]; }
-      ozet = demoOzet();
-    } else { urunler = ud.veriler; hareketler = hd.veriler; ozet = od; }
+    urunler = ud.veriler; hareketler = hd.veriler; ozet = od;
   }
 
   function render() {
     const y = O.yonetici();
     const kritikler = ozet.kritik_urunler || [];
     O.icerik(`
-      ${O.demoUyari(demo)}
       ${O.statGrid([
         { label: 'Ürün Çeşidi', deger: ozet.urun_sayisi, alt: 'aktif kalem' },
         { label: 'Kritik Seviye', deger: ozet.kritik_sayisi, alt: 'sipariş gerekiyor', renk: ozet.kritik_sayisi ? '#EF4444' : '#22C55E' },
@@ -186,14 +157,7 @@ const StokModul = (() => {
         try {
           const s = id ? await O.api(`/stok/${id}`, { method: 'PUT', body: JSON.stringify(veri) })
                        : await O.api('/stok', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            if (id) { const x = urunler.find(k => k.id === id); Object.assign(x, veri); guncelleTuretilen(x); }
-            else {
-              const yeni = { id: Date.now(), kod: `STK-${String(urunler.length + 1).padStart(3, '0')}`, mevcut_miktar: 0, aktif: true, ...veri };
-              guncelleTuretilen(yeni); urunler.push(yeni);
-            }
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
@@ -225,20 +189,7 @@ const StokModul = (() => {
         const veri = O.formVeri(e.target, ['urun_id', 'miktar', 'personel_id']);
         try {
           const s = await O.api('/stok/hareketler', { method: 'POST', body: JSON.stringify(veri) });
-          if (!s) {
-            const u = urunler.find(x => x.id === veri.urun_id);
-            const mevcut = Number(u.mevcut_miktar);
-            if (veri.tur === 'giris') u.mevcut_miktar = mevcut + veri.miktar;
-            else if (veri.tur === 'sayim') u.mevcut_miktar = veri.miktar;
-            else {
-              if (veri.miktar > mevcut) return O.hataGoster(`Yetersiz stok. Mevcut: ${mevcut} ${u.birim}`);
-              u.mevcut_miktar = mevcut - veri.miktar;
-            }
-            guncelleTuretilen(u);
-            const p = pers.find(x => x.id === veri.personel_id);
-            hareketler.unshift({ id: Date.now(), urun_ad: u.ad, urun_kod: u.kod, birim: u.birim, personel_ad: p ? p.adSoyad : null, ...veri });
-            ozet = demoOzet();
-          } else await veriYukle();
+          await veriYukle();
           O.modalKapat(); render();
         } catch (err) { O.hataGoster(err.message); }
       };
