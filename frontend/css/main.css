@@ -824,11 +824,25 @@ html, body {
   width:26px; min-width:26px; height:24px;
   padding:0; text-align:center;
   font-size:12px; font-weight:700;
-  cursor:pointer; user-select:none;
+  cursor:default; user-select:none;
   transition:outline-color .1s;
   outline:2px solid transparent; outline-offset:-2px;
 }
-.pt-hucre:hover { outline-color:var(--primary); }
+/* Hücreler yalnızca düzenleme modunda tıklanabilir görünür */
+.pt-duzenlenebilir .pt-hucre { cursor:pointer; }
+.pt-duzenlenebilir .pt-hucre:hover { outline-color:var(--primary); }
+
+/* Düzenleme modunda cetvel çerçevelenir ki hangi modda olunduğu belli olsun */
+.pt-duzenlenebilir { outline:2px solid var(--primary); outline-offset:0; }
+.pt-duzenle-acik { background:var(--danger) !important; border-color:var(--danger) !important; }
+.pt-duzenle-acik:hover { background:#A80000 !important; border-color:#A80000 !important; }
+
+/* Geri al düğmesi pasifken soluk */
+.btn-mini:disabled {
+  color:var(--text-4); border-color:var(--border-split);
+  cursor:not-allowed; background:transparent;
+}
+.btn-mini:disabled:hover { background:transparent; }
 .pt-hucre.pt-kaydediliyor { opacity:.5; }
 .pt-cetvel tbody tr:hover td { background-color:color-mix(in srgb, var(--gray-50) 60%, transparent); }
 

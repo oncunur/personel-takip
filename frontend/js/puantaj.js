@@ -12,7 +12,11 @@ const PuantajModul = (() => {
   let cetvel = null;
   // Mesai düzeni sunucudan gelir (08:00-19:00, günlük 10 saat)
   let mesai = { baslangic: '08:00', bitis: '19:00', gunluk_saat: 10, mola_saat: 1 };
-  let saatGoster = false;   // hücrede kod yerine saat göster
+  let saatGoster = false;      // hücrede kod yerine saat göster
+  let duzenlemeAcik = false;   // cetvel varsayılan olarak salt okunur
+  let gecmis = [];             // geri alma yığını (en fazla 20 adım)
+
+  const GECMIS_SINIRI = 20;
 
   // Hücreye tıklandığında durumların izlediği sıra
   const DONGU = [null, 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil', 'hafta_sonu'];
@@ -60,6 +64,14 @@ const PuantajModul = (() => {
   }
 
   const saatMetni = s => (s % 1 === 0 ? String(s) : s.toFixed(1).replace('.', ','));
+
+  // "08:00" + 5 saat -> "13:00"
+  function saatEkle(hhmm, saat) {
+    const [a, b] = hhmm.split(':').map(Number);
+    const toplam = a * 60 + b + Math.round(saat * 60);
+    const ss = Math.floor(toplam / 60) % 24, dd = toplam % 60;
+    return `${String(ss).padStart(2, '0')}:${String(dd).padStart(2, '0')}`;
+  }
 
   function gunBasligi(g) {
     const d = new Date(secilenYil, secilenAy - 1, g.gun);
@@ -118,6 +130,15 @@ const PuantajModul = (() => {
           <button class="btn-mini" onclick="PuantajModul.gorunumDegistir()">
             ${saatGoster ? 'Durum kodlarını göster' : 'Saatleri göster'}
           </button>
+          ${duzenlemeAcik ? `
+            <button class="btn-mini" onclick="PuantajModul.geriAl()" ${gecmis.length ? '' : 'disabled'}
+                    title="${gecmis.length ? 'Son değişikliği geri al (Ctrl+Z)' : 'Geri alınacak değişiklik yok'}">
+              ↶ Geri al${gecmis.length ? ` (${gecmis.length})` : ''}
+            </button>
+            <button class="btn-yeni pt-duzenle-acik" onclick="PuantajModul.duzenlemeDegistir()">
+              Düzenlemeyi kapat
+            </button>` : `
+            <button class="btn-mini" onclick="PuantajModul.duzenlemeDegistir()">Düzenle</button>`}
           <button class="btn-export" onclick="PuantajModul.exportCSV()">CSV İndir</button>
         </div>
       </div>
@@ -132,10 +153,14 @@ const PuantajModul = (() => {
           Mesai ${mesai.baslangic}–${mesai.bitis} · günlük ${saatMetni(mesai.gunluk_saat)} saat
           (${saatMetni(mesai.mola_saat)} saat ara dinlenmesi düşülür)
         </span>
-        <span class="pt-lejant-ipucu">Tıkla: durumu değiştir · Çift tıkla: saat ve not</span>
+        <span class="pt-lejant-ipucu">
+          ${duzenlemeAcik
+            ? 'Düzenleme açık — tıkla: durumu değiştir · çift tıkla: saat ve not'
+            : 'Salt okunur — değişiklik için "Düzenle" düğmesine basın'}
+        </span>
       </div>
 
-      <div class="panel pt-cetvel-sarmal">
+      <div class="panel pt-cetvel-sarmal${duzenlemeAcik ? ' pt-duzenlenebilir' : ''}">
         <table class="pt-cetvel">
           <thead>
             <tr>
@@ -199,11 +224,11 @@ const PuantajModul = (() => {
     const tablo = document.querySelector('.pt-cetvel tbody');
     tablo.addEventListener('click', e => {
       const td = e.target.closest('.pt-hucre');
-      if (td) durumIlerlet(td);
+      if (td && duzenlemeAcik) durumIlerlet(td);
     });
     tablo.addEventListener('dblclick', e => {
       const td = e.target.closest('.pt-hucre');
-      if (td) gunDetayAc(td);
+      if (td && duzenlemeAcik) gunDetayAc(td);
     });
   }
 
@@ -321,11 +346,84 @@ const PuantajModul = (() => {
         hucreBoya(td, yeni, satir.gunler[String(gun)]);
       }
       toplamlariTazele(satir);
+      gecmiseEkle({ pid: satir.personel_id, gun, onceki: oncekiHucre });
     } catch (err) {
       hucreBoya(td, oncekiDurum, oncekiHucre);
       alert(err.message);
     } finally {
       td.classList.remove('pt-kaydediliyor');
+    }
+  }
+
+  let kisayolBagliMi = false;
+  function kisayolBagla() {
+    if (kisayolBagliMi) return;
+    kisayolBagliMi = true;
+    document.addEventListener('keydown', e => {
+      // Yalnızca puantaj sayfası açıkken ve düzenleme modundayken
+      const cetvelGorunur = document.querySelector('.pt-cetvel');
+      if (!cetvelGorunur || !duzenlemeAcik) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        gecmisiGeriAl();
+      }
+    });
+  }
+
+  // ── Geri alma ───────────────────────────────────────────────────
+  // Her değişiklikten önceki hücre durumu saklanır; geri alma bu
+  // durumu sunucuya yeniden yazar (ya da kayıt yoksa siler).
+  function gecmiseEkle(adim) {
+    gecmis.push(adim);
+    if (gecmis.length > GECMIS_SINIRI) gecmis.shift();
+    geriAlDugmesiniTazele();
+  }
+
+  function geriAlDugmesiniTazele() {
+    const dugme = document.querySelector('.toolbar-sagda button[onclick*="geriAl"]');
+    if (!dugme) return;
+    dugme.disabled = gecmis.length === 0;
+    dugme.textContent = gecmis.length ? `↶ Geri al (${gecmis.length})` : '↶ Geri al';
+  }
+
+  async function gecmisiGeriAl() {
+    const adim = gecmis.pop();
+    if (!adim) return;
+    geriAlDugmesiniTazele();
+
+    const satir = satirBul(adim.pid);
+    const td = document.querySelector(`.pt-hucre[data-pid="${adim.pid}"][data-gun="${adim.gun}"]`);
+    const tarih = `${secilenYil}-${String(secilenAy).padStart(2,'0')}-${String(adim.gun).padStart(2,'0')}`;
+
+    try {
+      const suanki = satir.gunler[String(adim.gun)];
+      if (!adim.onceki.durum || (gunHaftaTatili(adim.gun) && adim.onceki.durum === 'hafta_sonu' && !adim.onceki.id)) {
+        // Önceki hal "kayıt yok" idi: mevcut kaydı sil
+        if (suanki.id) await apiFetch(`/puantaj/${suanki.id}`, { method: 'DELETE' });
+        satir.gunler[String(adim.gun)] = {
+          id: null, durum: gunHaftaTatili(adim.gun) ? 'hafta_sonu' : null,
+          giris_saati: null, cikis_saati: null, fazla_mesai: 0,
+        };
+      } else {
+        const s = await apiFetch('/puantaj', { method: 'POST', body: JSON.stringify({
+          personel_id: adim.pid, tarih,
+          durum: adim.onceki.durum,
+          giris_saati: adim.onceki.giris_saati || null,
+          cikis_saati: adim.onceki.cikis_saati || null,
+        })});
+        satir.gunler[String(adim.gun)] = {
+          id: s.id, durum: adim.onceki.durum,
+          giris_saati: s.giris_saati, cikis_saati: s.cikis_saati,
+          fazla_mesai: s.fazla_mesai || 0,
+        };
+      }
+      const h = satir.gunler[String(adim.gun)];
+      if (td) hucreBoya(td, h.durum, h);
+      toplamlariTazele(satir);
+    } catch (err) {
+      gecmis.push(adim);          // başarısızsa adımı geri koy
+      geriAlDugmesiniTazele();
+      alert('Geri alınamadı: ' + err.message);
     }
   }
 
@@ -337,21 +435,32 @@ const PuantajModul = (() => {
 
     document.getElementById('pt-modal-baslik').textContent =
       `${satir.ad_soyad} — ${gun} ${AYLAR[secilenAy-1]} ${secilenYil}`;
+    // Kayıt yoksa varsayılan olarak tam gün açılır; hesabın ve saat
+    // alanlarının açılıştaki durumla tutarlı olması için baştan belirlenir.
+    const acilisDurum = kayit.durum || 'tam';
+    const calisilan = acilisDurum === 'tam' || acilisDurum === 'yarim';
+    const acilisGiris = kayit.giris_saati || (calisilan ? mesai.baslangic : '');
+    const acilisCikis = kayit.cikis_saati || (
+      acilisDurum === 'tam' ? mesai.bitis
+      : acilisDurum === 'yarim' ? saatEkle(mesai.baslangic, mesai.gunluk_saat / 2)
+      : '');
+    const acilisSaat = hucreSaati({ durum: acilisDurum, giris_saati: acilisGiris, cikis_saati: acilisCikis });
+
     document.getElementById('pt-modal-icerik').innerHTML = `
       <form id="pt-form" class="modal-form">
         <div class="form-group"><label>Durum</label>
           <select name="durum">
-            ${Object.keys(KOD).map(d => `<option value="${d}" ${kayit.durum === d ? 'selected' : ''}>${METIN[d]}</option>`).join('')}
+            ${Object.keys(KOD).map(d => `<option value="${d}" ${acilisDurum === d ? 'selected' : ''}>${METIN[d]}</option>`).join('')}
           </select>
         </div>
         <div class="form-grid-2">
           <div class="form-group"><label>Giriş Saati</label>
-            <input type="time" name="giris_saati" value="${kayit.giris_saati || mesai.baslangic}" /></div>
+            <input type="time" name="giris_saati" value="${acilisGiris}" /></div>
           <div class="form-group"><label>Çıkış Saati</label>
-            <input type="time" name="cikis_saati" value="${kayit.cikis_saati || mesai.bitis}" /></div>
+            <input type="time" name="cikis_saati" value="${acilisCikis}" /></div>
         </div>
         <div class="pt-hesap-kutu">
-          Çalışılan süre: <strong id="pt-hesap">${saatMetni(hucreSaati(kayit))} saat</strong>
+          Çalışılan süre: <strong id="pt-hesap">${saatMetni(acilisSaat)} saat</strong>
           <span class="hucre-alt">${saatMetni(mesai.mola_saat)} saat ara dinlenmesi düşülür</span>
         </div>
         <div class="form-group"><label>Not</label><input name="notlar" placeholder="Opsiyonel..." /></div>
@@ -373,7 +482,31 @@ const PuantajModul = (() => {
       });
       document.getElementById('pt-hesap').textContent = `${saatMetni(s)} saat`;
     };
-    form.querySelectorAll('input[type=time], select[name=durum]')
+
+    // Durum değişince saatler o duruma uygun hale getirilir: yarım gün
+    // seçiliyken saatlerin tam gün göstermesi çelişkili bir kayıt üretir
+    // (hesap saatlerden yapıldığı için 10 saat sayılırdı).
+    const durumSec = form.querySelector('select[name=durum]');
+    durumSec.addEventListener('change', () => {
+      const giris = form.querySelector('input[name=giris_saati]');
+      const cikis = form.querySelector('input[name=cikis_saati]');
+      const d = durumSec.value;
+
+      if (d === 'tam') {
+        giris.value = mesai.baslangic;
+        cikis.value = mesai.bitis;
+      } else if (d === 'yarim') {
+        giris.value = mesai.baslangic;
+        cikis.value = saatEkle(mesai.baslangic, mesai.gunluk_saat / 2);
+      } else {
+        // Çalışılmayan günlerde saat bilgisi anlamsız
+        giris.value = '';
+        cikis.value = '';
+      }
+      hesapTazele();
+    });
+
+    form.querySelectorAll('input[type=time]')
         .forEach(el => el.addEventListener('change', hesapTazele));
 
     document.getElementById('pt-form').addEventListener('submit', async e => {
@@ -416,12 +549,21 @@ const PuantajModul = (() => {
       departmanlar = dep || [];
       await cetvelYukle();
       render();
+      kisayolBagla();
     },
 
     gorunumDegistir() {
       saatGoster = !saatGoster;
       render();
     },
+
+    duzenlemeDegistir() {
+      duzenlemeAcik = !duzenlemeAcik;
+      if (!duzenlemeAcik) gecmis = [];   // kilitlenince geçmiş sıfırlanır
+      render();
+    },
+
+    geriAl() { gecmisiGeriAl(); },
 
     oncekiAy()  { donemDegistir(-1); },
     sonrakiAy() { donemDegistir(1); },
