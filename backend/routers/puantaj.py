@@ -157,6 +157,82 @@ def aylik_puantaj(
     }
 
 
+class TopluDoldur(BaseModel):
+    """Bir dönemi tek istekte doldurmak için."""
+    yil: int
+    ay: int
+    durum: models.PuantajDurum = models.PuantajDurum.tam
+    personel_idler: Optional[List[int]] = None   # boşsa tüm aktif personel
+    gunler: Optional[List[int]] = None           # boşsa ayın tüm günleri
+    hafta_tatili_dahil: bool = False             # pazar günleri de doldurulsun mu
+    mevcutlari_koru: bool = True                 # dolu günlere dokunulmasın mı
+
+
+@router.post("/toplu-doldur")
+def toplu_doldur(
+    veri: TopluDoldur,
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Bir ayı toplu doldurur.
+
+    Ay başında 30 gün × personel sayısı kadar hücreye tek tek tıklamak
+    yerine tek istekte doldurulur. Varsayılan olarak mevcut kayıtlara
+    dokunulmaz; yalnızca boş günler işlenir.
+    """
+    gun_sayisi = calendar.monthrange(veri.yil, veri.ay)[1]
+
+    q = db.query(models.Personel).filter(
+        models.Personel.durum != models.PersonelDurum.pasif
+    )
+    if veri.personel_idler:
+        q = q.filter(models.Personel.id.in_(veri.personel_idler))
+    personeller = q.all()
+    if not personeller:
+        raise HTTPException(status_code=400, detail="Eşleşen personel bulunamadı")
+
+    hedef_gunler = veri.gunler or list(range(1, gun_sayisi + 1))
+    gecersiz = [g for g in hedef_gunler if not 1 <= g <= gun_sayisi]
+    if gecersiz:
+        raise HTTPException(status_code=400, detail=f"Ay {gun_sayisi} gün: geçersiz gün {gecersiz}")
+
+    # Mevcut kayıtlar tek sorguda okunur
+    mevcut = {}
+    for k in db.query(models.Puantaj).filter(
+        models.Puantaj.personel_id.in_([p.id for p in personeller]),
+        models.Puantaj.tarih >= date(veri.yil, veri.ay, 1),
+        models.Puantaj.tarih <= date(veri.yil, veri.ay, gun_sayisi),
+    ).all():
+        mevcut[(k.personel_id, k.tarih.day)] = k
+
+    eklenen = guncellenen = atlanan = 0
+    for p in personeller:
+        for g in hedef_gunler:
+            gun_tarihi = date(veri.yil, veri.ay, g)
+            if hafta_tatili_mi(gun_tarihi) and not veri.hafta_tatili_dahil:
+                atlanan += 1
+                continue
+
+            kayit = mevcut.get((p.id, g))
+            if kayit:
+                if veri.mevcutlari_koru:
+                    atlanan += 1
+                    continue
+                kayit.durum = veri.durum
+                guncellenen += 1
+            else:
+                db.add(models.Puantaj(personel_id=p.id, tarih=gun_tarihi, durum=veri.durum))
+                eklenen += 1
+
+    db.commit()
+    return {
+        "personel_sayisi": len(personeller),
+        "eklenen": eklenen,
+        "guncellenen": guncellenen,
+        "atlanan": atlanan,
+    }
+
+
 @router.get("/cetvel")
 def aylik_cetvel(
     yil: int = Query(...),

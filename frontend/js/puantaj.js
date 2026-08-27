@@ -131,6 +131,7 @@ const PuantajModul = (() => {
             ${saatGoster ? 'Durum kodlarını göster' : 'Saatleri göster'}
           </button>
           ${duzenlemeAcik ? `
+            <button class="btn-mini" onclick="PuantajModul.topluDoldurAc()">Ayı doldur</button>
             <button class="btn-mini" onclick="PuantajModul.geriAl()" ${gecmis.length ? '' : 'disabled'}
                     title="${gecmis.length ? 'Son değişikliği geri al (Ctrl+Z)' : 'Geri alınacak değişiklik yok'}">
               ↶ Geri al${gecmis.length ? ` (${gecmis.length})` : ''}
@@ -555,6 +556,64 @@ const PuantajModul = (() => {
     gorunumDegistir() {
       saatGoster = !saatGoster;
       render();
+    },
+
+    // Ay başında 30 gün × personel sayısı kadar hücreye tıklamak yerine
+    // tek istekte doldurma. Varsayılan olarak dolu günlere dokunulmaz.
+    topluDoldurAc() {
+      const g = Ortak.modalAc(`${AYLAR[secilenAy-1]} ${secilenYil} — Toplu Doldur`, `
+        <form id="td-form" class="modal-form">
+          <div class="form-group"><label>Durum</label>
+            <select name="durum">
+              <option value="tam">Tam gün (${saatMetni(mesai.gunluk_saat)} saat)</option>
+              <option value="yarim">Yarım gün (${saatMetni(mesai.gunluk_saat / 2)} saat)</option>
+              <option value="izinli">İzinli</option>
+              <option value="resmi_tatil">Resmi tatil</option>
+            </select></div>
+
+          <div class="form-group"><label>Kimler için</label>
+            <select name="kapsam">
+              <option value="hepsi">Cetveldeki tüm personel (${cetvel.personeller.length} kişi)</option>
+              ${cetvel.personeller.map(p => `<option value="${p.personel_id}">${Ortak.kacir(p.ad_soyad)}</option>`).join('')}
+            </select></div>
+
+          <label class="td-secenek">
+            <input type="checkbox" name="mevcutlari_koru" checked />
+            <span>Dolu günlere dokunma <span class="hucre-alt">(kapatılırsa mevcut kayıtların üzerine yazılır)</span></span>
+          </label>
+          <label class="td-secenek">
+            <input type="checkbox" name="hafta_tatili_dahil" />
+            <span>Hafta tatili günlerini de doldur <span class="hucre-alt">(pazar günleri)</span></span>
+          </label>
+
+          ${Ortak.formHata()}${Ortak.modalFooter('Doldur')}
+        </form>`);
+
+      g.querySelector('#td-form').onsubmit = async e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const kapsam = fd.get('kapsam');
+        const govde = {
+          yil: secilenYil, ay: secilenAy,
+          durum: fd.get('durum'),
+          mevcutlari_koru: fd.get('mevcutlari_koru') === 'on',
+          hafta_tatili_dahil: fd.get('hafta_tatili_dahil') === 'on',
+        };
+        if (kapsam !== 'hepsi') govde.personel_idler = [Number(kapsam)];
+
+        try {
+          const s = await apiFetch('/puantaj/toplu-doldur', { method: 'POST', body: JSON.stringify(govde) });
+          Ortak.modalKapat();
+          // Toplu değişiklik geri alınamaz; geçmiş temizlenir ki
+          // yanıltıcı bir "geri al" düğmesi kalmasın.
+          gecmis = [];
+          await cetvelYukle();
+          render();
+          alert(`${s.eklenen} gün eklendi`
+            + (s.guncellenen ? `, ${s.guncellenen} gün güncellendi` : '')
+            + (s.atlanan ? `, ${s.atlanan} gün atlandı` : '') + '.');
+        } catch (err) { Ortak.hataGoster(err.message); }
+      };
     },
 
     duzenlemeDegistir() {

@@ -897,6 +897,15 @@ html, body {
   border-left:1px solid var(--border-split);
 }
 
+/* Toplu doldurma seçenekleri */
+.td-secenek {
+  display: flex; align-items: flex-start; gap: var(--sp-s);
+  padding: var(--sp-xs) 0;
+  font-size: 14px; cursor: pointer;
+}
+.td-secenek input { width: auto; margin-top: 3px; flex-shrink: 0; }
+.td-secenek .hucre-alt { display: inline; margin-left: 4px; }
+
 /* Gün detayında hesaplanan süre kutusu */
 .pt-hesap-kutu {
   background:var(--primary-light);
