@@ -1,6 +1,10 @@
 // ─── Personel Modülü ───────────────────────────────────────────────
 const PersonelModul = (() => {
   let departmanlar = [];
+  let ulkeler = [];
+
+  // Kaçış + boş değer kısayolu: kullanıcı verisi doğrudan HTML'e girmesin
+  const K = v => (v === null || v === undefined || v === '') ? '—' : Ortak.kacir(v);
   let mevcutSayfa = 1;
   let aramaTxt = '';
   let filtreDepartman = '';
@@ -57,7 +61,7 @@ const PersonelModul = (() => {
     const tbody = document.getElementById('personel-tbody');
     if (!tbody) return;
     if (!liste.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
       document.getElementById('personel-toplam').textContent = '0 personel';
       return;
     }
@@ -66,16 +70,17 @@ const PersonelModul = (() => {
       <tr class="personel-satir" data-id="${p.id}">
         <td>
           <div class="personel-avatar-ad">
-            <div class="avatar">${p.ad[0]}${p.soyad[0]}</div>
+            <div class="avatar">${Ortak.kacir(p.ad[0] || '')}${Ortak.kacir(p.soyad[0] || '')}</div>
             <div>
-              <strong>${p.ad} ${p.soyad}</strong>
-              <span class="alt-bilgi">${p.email}</span>
+              <strong>${Ortak.kacir(p.ad)} ${Ortak.kacir(p.soyad)}</strong>
+              <span class="alt-bilgi">${Ortak.kacir(p.email)}</span>
             </div>
           </div>
         </td>
-        <td><span style="color:var(--gray-700)">${p.pozisyon || '—'}</span></td>
-        <td><span class="departman-chip">${p.departman_ad || '—'}</span></td>
-        <td>${p.telefon || '—'}</td>
+        <td><span style="color:var(--gray-700)">${K(p.pozisyon)}</span></td>
+        <td><span class="departman-chip">${K(p.departman_ad)}</span></td>
+        <td>${p.uyruk ? `<span class="uyruk-etiket" title="${Ortak.kacir(p.uyruk_ad || '')}">${Ortak.kacir(p.uyruk)}</span>` : '—'}</td>
+        <td>${K(p.telefon)}</td>
         <td>
           <span class="durum-badge" style="background:${durumRenk[p.durum]}22;color:${durumRenk[p.durum]}">
             ${durumEtiket[p.durum]}
@@ -88,7 +93,7 @@ const PersonelModul = (() => {
           <button class="btn-ikon" onclick="PersonelModul.duzenleAc(${p.id})" title="Düzenle">
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
           </button>
-          <button class="btn-ikon btn-sil" onclick="PersonelModul.sil(${p.id}, '${p.ad} ${p.soyad}')" title="Sil">
+          <button class="btn-ikon btn-sil" onclick="PersonelModul.sil(${p.id}, '${Ortak.kacir((p.ad + ' ' + p.soyad).replace(/'/g, ''))}')" title="Sil">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
           </button>
         </td>
@@ -131,11 +136,11 @@ const PersonelModul = (() => {
         <table class="personel-tablo">
           <thead>
             <tr>
-              <th>Personel</th><th>Pozisyon</th><th>Departman</th><th>Telefon</th><th>Durum</th><th>İşlemler</th>
+              <th>Personel</th><th>Pozisyon</th><th>Departman</th><th>Uyruk</th><th>Telefon</th><th>Durum</th><th>İşlemler</th>
             </tr>
           </thead>
           <tbody id="personel-tbody">
-            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
           </tbody>
         </table>
       </div>
@@ -182,10 +187,38 @@ const PersonelModul = (() => {
           <div class="form-group"><label>Soyad *</label><input name="soyad" required value="${p.soyad||''}" placeholder="Soyad" /></div>
           <div class="form-group"><label>E-posta *</label><input name="email" type="email" required value="${p.email||''}" placeholder="ornek@sirket.com" /></div>
           <div class="form-group"><label>Telefon</label><input name="telefon" value="${p.telefon||''}" placeholder="0532 000 00 00" /></div>
-          <div class="form-group"><label>TC Kimlik</label><input name="tc_kimlik" maxlength="11" value="${p.tc_kimlik||''}" placeholder="11 haneli TC kimlik" /></div>
+          <div class="form-group"><label>Uyruk</label>
+            <select name="uyruk" id="pf-uyruk">
+              <option value="">Seçiniz</option>
+              ${ulkeler.map(u => `<option value="${u.kod}" ${p.uyruk===u.kod?'selected':''}>${Ortak.kacir(u.ad)}</option>`).join('')}
+            </select>
+          </div>
           <div class="form-group"><label>Departman</label>
             <select name="departman_id"><option value="">Seçiniz</option>${depOptions}</select>
           </div>
+        </div>
+
+        <div class="form-bolum-baslik">Kimlik Bilgileri</div>
+        <p class="hucre-alt" style="margin:-4px 0 8px">
+          Türk vatandaşları için TC kimlik, yabancı çalışanlar için
+          YKN ve pasaport bilgisi girilir. Yalnızca ilgili alanları doldurun.
+        </p>
+        <div class="form-grid-2">
+          <div class="form-group"><label>TC Kimlik No</label>
+            <input name="tc_kimlik" maxlength="11" inputmode="numeric"
+                   value="${p.tc_kimlik||''}" placeholder="11 haneli" /></div>
+          <div class="form-group"><label>Yabancı Kimlik No (YKN)</label>
+            <input name="yabanci_kimlik_no" maxlength="11" inputmode="numeric"
+                   value="${p.yabanci_kimlik_no||''}" placeholder="99 ile başlayan 11 hane" /></div>
+          <div class="form-group"><label>Pasaport No</label>
+            <input name="pasaport_no" maxlength="20"
+                   value="${p.pasaport_no||''}" placeholder="AB1234567" /></div>
+          <div class="form-group"><label>Pasaport Geçerlilik</label>
+            <input type="date" name="pasaport_gecerlilik" value="${p.pasaport_gecerlilik||''}" /></div>
+        </div>
+
+        <div class="form-bolum-baslik">Görev Bilgileri</div>
+        <div class="form-grid-2">
           <div class="form-group"><label>Pozisyon</label><input name="pozisyon" value="${p.pozisyon||''}" placeholder="Yazılım Geliştirici" /></div>
           <div class="form-group"><label>Cinsiyet</label>
             <select name="cinsiyet">
@@ -228,6 +261,7 @@ const PersonelModul = (() => {
   return {
     async yukle() {
       await departmanlariYukle();
+      if (!ulkeler.length) ulkeler = await apiFetch('/personel/ulkeler') || [];
       sayfaRender();
     },
 
@@ -277,18 +311,22 @@ const PersonelModul = (() => {
       document.getElementById('modal-baslik').textContent = `${p.ad} ${p.soyad}`;
       document.getElementById('modal-icerik').innerHTML = `
         <div class="detay-grid">
-          <div class="detay-satir"><span>E-posta</span><strong>${p.email||'—'}</strong></div>
-          <div class="detay-satir"><span>Telefon</span><strong>${p.telefon||'—'}</strong></div>
-          <div class="detay-satir"><span>TC Kimlik</span><strong>${p.tc_kimlik||'—'}</strong></div>
-          <div class="detay-satir"><span>Departman</span><strong>${p.departman_ad||'—'}</strong></div>
-          <div class="detay-satir"><span>Pozisyon</span><strong>${p.pozisyon||'—'}</strong></div>
+          <div class="detay-satir"><span>E-posta</span><strong>${K(p.email)}</strong></div>
+          <div class="detay-satir"><span>Telefon</span><strong>${K(p.telefon)}</strong></div>
+          <div class="detay-satir"><span>Uyruk</span><strong>${K(p.uyruk_ad)}</strong></div>
+          ${p.tc_kimlik ? `<div class="detay-satir"><span>TC Kimlik</span><strong>${K(p.tc_kimlik)}</strong></div>` : ''}
+          ${p.yabanci_kimlik_no ? `<div class="detay-satir"><span>Yabancı Kimlik No</span><strong>${K(p.yabanci_kimlik_no)}</strong></div>` : ''}
+          ${p.pasaport_no ? `<div class="detay-satir"><span>Pasaport No</span><strong>${K(p.pasaport_no)}</strong></div>` : ''}
+          ${p.pasaport_gecerlilik ? `<div class="detay-satir"><span>Pasaport Geçerlilik</span><strong>${K(p.pasaport_gecerlilik)}</strong></div>` : ''}
+          <div class="detay-satir"><span>Departman</span><strong>${K(p.departman_ad)}</strong></div>
+          <div class="detay-satir"><span>Pozisyon</span><strong>${K(p.pozisyon)}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${durumRenk[p.durum]}22;color:${durumRenk[p.durum]}">${durumEtiket[p.durum]}</span></div>
           <div class="detay-satir"><span>Cinsiyet</span><strong>${cinsiyetEtiket[p.cinsiyet]||'—'}</strong></div>
-          <div class="detay-satir"><span>İşe Başlama</span><strong>${p.ise_baslama_tarihi||'—'}</strong></div>
-          <div class="detay-satir"><span>Doğum Tarihi</span><strong>${p.dogum_tarihi||'—'}</strong></div>
+          <div class="detay-satir"><span>İşe Başlama</span><strong>${K(p.ise_baslama_tarihi)}</strong></div>
+          <div class="detay-satir"><span>Doğum Tarihi</span><strong>${K(p.dogum_tarihi)}</strong></div>
           <div class="detay-satir"><span>Maaş</span><strong>${p.maas ? '₺'+Number(p.maas).toLocaleString('tr-TR') : '—'}</strong></div>
-          ${p.adres ? `<div class="detay-satir detay-tam"><span>Adres</span><strong>${p.adres}</strong></div>` : ''}
-          ${p.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${p.notlar}</strong></div>` : ''}
+          ${p.adres ? `<div class="detay-satir detay-tam"><span>Adres</span><strong>${K(p.adres)}</strong></div>` : ''}
+          ${p.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${K(p.notlar)}</strong></div>` : ''}
         </div>
         <div class="modal-footer">
           <button class="btn-iptal" onclick="PersonelModul.modalKapat()">Kapat</button>

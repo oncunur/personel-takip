@@ -6,9 +6,10 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
+import kimlik
 from database import get_db
 from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from datetime import date
 from decimal import Decimal
 
@@ -28,11 +29,60 @@ class DepartmanBilgi(BaseModel):
     personel_sayisi: int = 0
     class Config: from_attributes = True
 
-class PersonelOlustur(BaseModel):
+class KimlikKarma(BaseModel):
+    """Kimlik alanlarının ortak doğrulaması.
+
+    TC kimlik ve YKN biçim denetiminden geçer; pasaport numarası
+    ülkeye göre değiştiği için yalnızca karakter denetimi yapılır.
+    Boş bırakılan alanlar None'a çevrilir ki benzersizlik kısıtı
+    boş metinlerde çakışmasın.
+    """
+
+    @field_validator("tc_kimlik", "yabanci_kimlik_no", "pasaport_no", mode="before", check_fields=False)
+    @classmethod
+    def _bosu_none_yap(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v.strip() if isinstance(v, str) else v
+
+    @field_validator("tc_kimlik", check_fields=False)
+    @classmethod
+    def _tc(cls, v):
+        if v and not kimlik.tc_kimlik_gecerli(v):
+            raise ValueError("TC kimlik numarası geçersiz (11 hane ve doğrulama basamakları uymalı)")
+        return v
+
+    @field_validator("yabanci_kimlik_no", check_fields=False)
+    @classmethod
+    def _ykn(cls, v):
+        if v and not kimlik.ykn_gecerli(v):
+            raise ValueError("Yabancı kimlik numarası 99 ile başlayan 11 hane olmalı")
+        return v
+
+    @field_validator("pasaport_no", check_fields=False)
+    @classmethod
+    def _pasaport(cls, v):
+        if v and not kimlik.pasaport_gecerli(v):
+            raise ValueError("Pasaport numarası 5–20 karakter olmalı ve yalnızca harf/rakam içermeli")
+        return v
+
+    @field_validator("uyruk", check_fields=False)
+    @classmethod
+    def _uyruk(cls, v):
+        if v and v not in kimlik.ULKELER:
+            raise ValueError("Geçersiz uyruk kodu")
+        return v
+
+
+class PersonelOlustur(KimlikKarma):
     ad: str
     soyad: str
     email: EmailStr
+    uyruk: Optional[str] = None
     tc_kimlik: Optional[str] = None
+    yabanci_kimlik_no: Optional[str] = None
+    pasaport_no: Optional[str] = None
+    pasaport_gecerlilik: Optional[date] = None
     telefon: Optional[str] = None
     departman_id: Optional[int] = None
     pozisyon: Optional[str] = None
@@ -43,11 +93,15 @@ class PersonelOlustur(BaseModel):
     maas: Optional[Decimal] = None
     notlar: Optional[str] = None
 
-class PersonelGuncelle(BaseModel):
+class PersonelGuncelle(KimlikKarma):
     ad: Optional[str] = None
     soyad: Optional[str] = None
     email: Optional[EmailStr] = None
+    uyruk: Optional[str] = None
     tc_kimlik: Optional[str] = None
+    yabanci_kimlik_no: Optional[str] = None
+    pasaport_no: Optional[str] = None
+    pasaport_gecerlilik: Optional[date] = None
     telefon: Optional[str] = None
     departman_id: Optional[int] = None
     pozisyon: Optional[str] = None
@@ -64,7 +118,11 @@ class PersonelBilgi(BaseModel):
     ad: str
     soyad: str
     email: str
+    uyruk: Optional[str]
     tc_kimlik: Optional[str]
+    yabanci_kimlik_no: Optional[str]
+    pasaport_no: Optional[str]
+    pasaport_gecerlilik: Optional[date]
     telefon: Optional[str]
     departman_id: Optional[int]
     departman_ad: Optional[str] = None
@@ -81,7 +139,8 @@ class PersonelBilgi(BaseModel):
 
 # ---------- Yardımcı ----------
 # Yalnızca yöneticilerin ve kaydın sahibinin görebileceği alanlar
-HASSAS_ALANLAR = ("tc_kimlik", "dogum_tarihi", "adres", "maas", "notlar")
+HASSAS_ALANLAR = ("tc_kimlik", "yabanci_kimlik_no", "pasaport_no",
+                  "pasaport_gecerlilik", "dogum_tarihi", "adres", "maas", "notlar")
 
 
 def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
@@ -95,7 +154,12 @@ def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
         "ad": p.ad,
         "soyad": p.soyad,
         "email": p.email,
+        "uyruk": p.uyruk,
+        "uyruk_ad": kimlik.ulke_adi(p.uyruk),
         "tc_kimlik": p.tc_kimlik,
+        "yabanci_kimlik_no": p.yabanci_kimlik_no,
+        "pasaport_no": p.pasaport_no,
+        "pasaport_gecerlilik": str(p.pasaport_gecerlilik) if p.pasaport_gecerlilik else None,
         "telefon": p.telefon,
         "departman_id": p.departman_id,
         "departman_ad": p.departman.ad if p.departman else None,
@@ -112,6 +176,34 @@ def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
         for alan in HASSAS_ALANLAR:
             veri[alan] = None
     return veri
+
+
+def _benzersizlik_denetle(db: Session, email=None, tc=None, ykn=None, haric_id=None) -> None:
+    """Benzersiz olması gereken alanları önceden denetler.
+
+    Veritabanı kısıtına bırakılırsa IntegrityError 500 hatasına dönüşür;
+    burada anlamlı bir 400 mesajı üretilir.
+    """
+    denetimler = [
+        (models.Personel.email, email, "Bu e-posta zaten kayıtlı"),
+        (models.Personel.tc_kimlik, tc, "Bu TC kimlik numarası zaten kayıtlı"),
+        (models.Personel.yabanci_kimlik_no, ykn, "Bu yabancı kimlik numarası zaten kayıtlı"),
+    ]
+    for alan, deger, mesaj in denetimler:
+        if not deger:
+            continue
+        q = db.query(models.Personel).filter(alan == deger)
+        if haric_id:
+            q = q.filter(models.Personel.id != haric_id)
+        if q.first():
+            raise HTTPException(status_code=400, detail=mesaj)
+
+
+# ---------- Referans listeler ----------
+@router.get("/ulkeler")
+def ulke_listesi(_: models.Kullanici = Depends(aktif_kullanici)):
+    """Uyruk seçimi için ülke listesi (ISO 3166-1 alfa-2)."""
+    return [{"kod": k, "ad": a} for k, a in kimlik.ULKELER.items()]
 
 
 # ---------- Departman Endpoints ----------
@@ -157,6 +249,7 @@ def personel_listesi(
     arama: Optional[str] = Query(None),
     departman_id: Optional[int] = Query(None),
     durum: Optional[str] = Query(None),
+    uyruk: Optional[str] = Query(None),
     sayfa: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -164,16 +257,27 @@ def personel_listesi(
 ):
     q = db.query(models.Personel)
     if arama:
-        q = q.filter(or_(
+        kosullar = [
             models.Personel.ad.ilike(f"%{arama}%"),
             models.Personel.soyad.ilike(f"%{arama}%"),
             models.Personel.email.ilike(f"%{arama}%"),
             models.Personel.pozisyon.ilike(f"%{arama}%"),
-        ))
+        ]
+        # Kimlik numarasıyla arama yalnızca yöneticilere açık; personel
+        # rolü bu alanları zaten göremiyor.
+        if yonetici_mi(kullanici):
+            kosullar += [
+                models.Personel.tc_kimlik.ilike(f"%{arama}%"),
+                models.Personel.yabanci_kimlik_no.ilike(f"%{arama}%"),
+                models.Personel.pasaport_no.ilike(f"%{arama}%"),
+            ]
+        q = q.filter(or_(*kosullar))
     if departman_id:
         q = q.filter(models.Personel.departman_id == departman_id)
     if durum:
         q = q.filter(models.Personel.durum == durum)
+    if uyruk:
+        q = q.filter(models.Personel.uyruk == uyruk)
     toplam = q.count()
     personeller = q.offset((sayfa - 1) * limit).limit(limit).all()
 
@@ -191,9 +295,7 @@ def personel_listesi(
 def personel_ekle(veri: PersonelOlustur, db: Session = Depends(get_db), kullanici: models.Kullanici = Depends(aktif_kullanici)):
     if kullanici.rol not in [models.Rol.admin, models.Rol.yonetici]:
         raise HTTPException(status_code=403, detail="Yetki yetersiz")
-    mevcut = db.query(models.Personel).filter(models.Personel.email == veri.email).first()
-    if mevcut:
-        raise HTTPException(status_code=400, detail="Bu e-posta zaten kayıtlı")
+    _benzersizlik_denetle(db, veri.email, veri.tc_kimlik, veri.yabanci_kimlik_no)
     p = models.Personel(**veri.model_dump())
     db.add(p); db.commit(); db.refresh(p)
     return personel_bilgi(p)
@@ -218,6 +320,7 @@ def personel_guncelle(pid: int, veri: PersonelGuncelle, db: Session = Depends(ge
     p = db.query(models.Personel).filter(models.Personel.id == pid).first()
     if not p:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
+    _benzersizlik_denetle(db, veri.email, veri.tc_kimlik, veri.yabanci_kimlik_no, haric_id=pid)
     for alan, deger in veri.model_dump(exclude_none=True).items():
         setattr(p, alan, deger)
     db.commit(); db.refresh(p)

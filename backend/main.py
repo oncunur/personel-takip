@@ -16,6 +16,7 @@ from routers import satinalma as satinalma_router
 from routers import stok as stok_router
 from routers import ziyaretci as ziyaretci_router
 import models
+import sema
 import auth as auth_utils
 from database import SessionLocal
 
@@ -52,6 +53,11 @@ app.include_router(ziyaretci_router.router)
 @app.on_event("startup")
 def baslangic():
     Base.metadata.create_all(bind=engine)
+    # create_all yalnızca eksik tabloları açar; modele sonradan eklenen
+    # sütunlar için ayrıca denetim gerekir.
+    eklenen = sema.eksik_sutunlari_ekle(engine)
+    if eklenen:
+        print("✓ Şemaya eklenen sütunlar:", ", ".join(eklenen))
     _admin_olustur()
 
 

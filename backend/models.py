@@ -41,7 +41,15 @@ class Personel(Base):
     id = Column(Integer, primary_key=True, index=True)
     ad = Column(String, nullable=False)
     soyad = Column(String, nullable=False)
+    # ── Kimlik ──
+    # Türk vatandaşları için TC kimlik; yabancı çalışanlar için
+    # Türkiye'de verilen YKN (99 ile başlayan 11 hane) ve pasaport.
+    # Bir kişide hem YKN hem pasaport bulunabilir.
+    uyruk = Column(String(2), nullable=True, index=True)   # ISO 3166-1 alfa-2
     tc_kimlik = Column(String(11), unique=True, nullable=True, index=True)
+    yabanci_kimlik_no = Column(String(11), unique=True, nullable=True, index=True)
+    pasaport_no = Column(String(20), nullable=True, index=True)
+    pasaport_gecerlilik = Column(Date, nullable=True)
     email = Column(String, unique=True, nullable=False, index=True)
     telefon = Column(String, nullable=True)
     departman_id = Column(Integer, ForeignKey("departmanlar.id"), nullable=True)
