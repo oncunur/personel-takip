@@ -66,12 +66,16 @@ def test_hucre_durumlari_ve_toplamlar(client, token, kullanici_olustur, ekip):
     assert mehmet["fazla_mesai"] == 2.0
 
 
-def test_hafta_sonu_isaretlenir(client, token, kullanici_olustur, ekip):
-    """1 Ağustos 2026 cumartesi, 3 Ağustos pazartesi."""
+def test_hafta_tatili_isaretlenir(client, token, kullanici_olustur, ekip):
+    """Cumartesi çalışma günüdür; yalnızca pazar hafta tatilidir.
+
+    1 Ağustos 2026 cumartesi, 2 Ağustos pazar, 3 Ağustos pazartesi.
+    """
     kullanici_olustur("mudur", models.Rol.yonetici)
     d = client.get("/puantaj/cetvel?yil=2026&ay=8", headers=token("mudur")).json()
     gun = {g["gun"]: g["hafta_sonu"] for g in d["gunler"]}
-    assert gun[1] is True and gun[2] is True
+    assert gun[1] is False      # cumartesi çalışılır
+    assert gun[2] is True       # pazar HT
     assert gun[3] is False
 
 

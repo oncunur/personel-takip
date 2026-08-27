@@ -15,16 +15,20 @@ const PuantajModul = (() => {
   let saatGoster = false;   // hücrede kod yerine saat göster
 
   // Hücreye tıklandığında durumların izlediği sıra
-  const DONGU = [null, 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil'];
+  const DONGU = [null, 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil', 'hafta_sonu'];
 
-  const KOD = { tam:'T', yarim:'Y', devamsiz:'D', izinli:'İ', resmi_tatil:'R' };
-  const METIN = { tam:'Tam gün', yarim:'Yarım gün', devamsiz:'Devamsız', izinli:'İzinli', resmi_tatil:'Resmi tatil' };
+  const KOD = { tam:'T', yarim:'Y', devamsiz:'D', izinli:'İ', resmi_tatil:'R', hafta_sonu:'HT' };
+  const METIN = {
+    tam:'Tam gün', yarim:'Yarım gün', devamsiz:'Devamsız', izinli:'İzinli',
+    resmi_tatil:'Resmi tatil', hafta_sonu:'Hafta tatili',
+  };
   const RENK = {
     tam:         { zemin:'#EFFFF1', yazi:'#00802F' },
     yarim:       { zemin:'#FFFEF0', yazi:'#855900' },
     devamsiz:    { zemin:'#FFF5F5', yazi:'#DB0000' },
     izinli:      { zemin:'#F0FBFF', yazi:'#006CE0' },
     resmi_tatil: { zemin:'#F3F3F7', yazi:'#424650' },
+    hafta_sonu:  { zemin:'#F3F3F7', yazi:'#656871' },
   };
 
   async function apiFetch(url, opts = {}) {
@@ -257,11 +261,23 @@ const PuantajModul = (() => {
     td.style.color = r ? r.yazi : '';
   }
 
+  function gunHaftaTatili(gunNo) {
+    return !!cetvel.gunler.find(g => g.gun === gunNo)?.hafta_sonu;
+  }
+
   async function durumIlerlet(td) {
     const satir = satirBul(td.dataset.pid);
     const gun = Number(td.dataset.gun);
     const mevcut = td.dataset.durum || null;
-    const yeni = DONGU[(DONGU.indexOf(mevcut) + 1) % DONGU.length];
+
+    // Hafta tatili günlerinde "kayıtsız" hal zaten HT'dir; bu yüzden
+    // döngü null yerine hafta_sonu üzerinden döner.
+    const ht = gunHaftaTatili(gun);
+    const dongu = ht
+      ? ['hafta_sonu', 'tam', 'yarim', 'devamsiz', 'izinli', 'resmi_tatil']
+      : DONGU;
+    const suanki = ht && !mevcut ? 'hafta_sonu' : mevcut;
+    const yeni = dongu[(dongu.indexOf(suanki) + 1) % dongu.length];
 
     // Önce ekranda göster, sonra kaydet; hata olursa geri al.
     const oncekiDurum = mevcut;
@@ -271,10 +287,13 @@ const PuantajModul = (() => {
 
     const tarih = `${secilenYil}-${String(secilenAy).padStart(2,'0')}-${String(gun).padStart(2,'0')}`;
     try {
-      if (yeni === null) {
+      if (yeni === null || (ht && yeni === 'hafta_sonu')) {
+        // Kaydı sil: normal günde hücre boşalır, pazar gününde HT'ye döner
         const kayit = satir.gunler[String(gun)];
         if (kayit.id) await apiFetch(`/puantaj/${kayit.id}`, { method: 'DELETE' });
-        satir.gunler[String(gun)] = { id: null, durum: null, giris_saati: null, cikis_saati: null, fazla_mesai: 0 };
+        const varsayilan = ht ? 'hafta_sonu' : null;
+        satir.gunler[String(gun)] = { id: null, durum: varsayilan, giris_saati: null, cikis_saati: null, fazla_mesai: 0 };
+        hucreBoya(td, varsayilan, satir.gunler[String(gun)]);
       } else {
         const s = await apiFetch('/puantaj', {
           method: 'POST',

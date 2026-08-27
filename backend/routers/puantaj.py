@@ -23,6 +23,14 @@ MOLA_SAAT       = 1.0     # ara dinlenmesi, çalışma süresinden düşülür
 GUNLUK_MESAI    = 10.0    # 08:00–19:00 arası 11 saat, 1 saat mola düşülür
 YARIM_GUN       = GUNLUK_MESAI / 2
 
+# Hafta tatili günü. Cumartesi normal çalışma günüdür; yalnızca pazar
+# hafta tatilidir (HT). date.weekday(): pazartesi 0 ... pazar 6.
+HAFTA_TATILI_GUNU = 6
+
+
+def hafta_tatili_mi(gun: date) -> bool:
+    return gun.weekday() == HAFTA_TATILI_GUNU
+
 # Fazla mesai ücreti maaşa dahil olduğu için ayrıca hesaplanmaz;
 # fazla_mesai alanı yalnızca bilgi amaçlı tutulur.
 
@@ -116,7 +124,7 @@ def aylik_puantaj(
     gun = baslangic
     while gun <= bitis:
         tarih_str = str(gun)
-        hafta_sonu = gun.weekday() >= 5
+        hafta_sonu = hafta_tatili_mi(gun)
         if tarih_str in kayit_map:
             gunler.append(kayit_map[tarih_str])
         else:
@@ -184,7 +192,7 @@ def aylik_cetvel(
         kayit_map.setdefault(k.personel_id, {})[k.tarih.day] = k
 
     gunler = [
-        {"gun": g, "hafta_sonu": date(yil, ay, g).weekday() >= 5}
+        {"gun": g, "hafta_sonu": hafta_tatili_mi(date(yil, ay, g))}
         for g in range(1, gun_sayisi + 1)
     ]
 
@@ -194,7 +202,11 @@ def aylik_cetvel(
         hucreler = {}
         for g in range(1, gun_sayisi + 1):
             k = kendi.get(g)
-            durum = k.durum if k else None
+            # Kayıt yoksa pazar günleri hafta tatili (HT) sayılır; kayıt
+            # varsa o gün çalışılmış olabilir, kaydedilen durum korunur.
+            durum = k.durum if k else (
+                models.PuantajDurum.hafta_sonu if hafta_tatili_mi(date(yil, ay, g)) else None
+            )
             hucreler[str(g)] = {
                 "id": k.id if k else None,
                 "durum": durum,
