@@ -86,12 +86,16 @@ const PuantajModul = (() => {
       >${hucreIcerik(durum, saat)}</td>`;
   }
 
-  // Saat modunda çalışılmayan günler (devamsız, izinli, HT) 0 saat
-  // ürettiği için boş kalıyordu; o günlerde durum kodu gösterilir.
+  // Saat modunda 0 saat üreten günler boş kalmasın diye: devamsızlık
+  // "0" olarak yazılır (kırmızı zeminde), izin ve hafta tatili ise
+  // durum koduyla (İ / HT) gösterilir.
+  const SAAT_MODU_YAZI = { devamsiz: '0' };
+
   function hucreIcerik(durum, saat) {
     if (!durum) return '';
     if (!saatGoster) return KOD[durum];
-    return saat ? saatMetni(saat) : KOD[durum];
+    if (saat) return saatMetni(saat);
+    return SAAT_MODU_YAZI[durum] || KOD[durum];
   }
 
   function render() {
