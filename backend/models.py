@@ -282,6 +282,18 @@ class Konaklama(Base):
     giris_tarihi  = Column(Date, nullable=False)
     cikis_tarihi  = Column(Date, nullable=True)
     oda_no        = Column(String, nullable=True)
+
+    # ── Otel konaklaması ──
+    # Fatura kesilmeden önce de maliyet görülebilsin diye gecelik ücret
+    # kayıt üzerinde tutulur; boşsa otelin varsayılan geceliği kullanılır.
+    # Fatura geldiğinde gerçek tutar işlenir ve tahminin yerini alır.
+    gecelik_ucret  = Column(Numeric(10, 2), nullable=True)
+    pansiyon       = Column(String(10), nullable=True)   # BB, HB, FB, OB
+    rezervasyon_no = Column(String(30), nullable=True)
+    fatura_no      = Column(String(40), nullable=True, index=True)
+    fatura_tarihi  = Column(Date, nullable=True)
+    fatura_tutari  = Column(Numeric(12, 2), nullable=True)
+
     aktif         = Column(Boolean, default=True)
     notlar        = Column(String, nullable=True)
     olusturma_tarihi = Column(DateTime(timezone=True), server_default=func.now())

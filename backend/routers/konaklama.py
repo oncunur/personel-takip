@@ -72,7 +72,27 @@ class KonaklamaOlustur(BaseModel):
     giris_tarihi: date
     cikis_tarihi: Optional[date] = None
     oda_no: Optional[str] = None
+    # Otel konaklaması için: fatura gelmeden maliyet hesaplanabilsin
+    gecelik_ucret: Optional[Decimal] = None
+    pansiyon: Optional[str] = None
+    rezervasyon_no: Optional[str] = None
     notlar: Optional[str] = None
+
+
+class KonaklamaGuncelle(BaseModel):
+    cikis_tarihi: Optional[date] = None
+    oda_no: Optional[str] = None
+    gecelik_ucret: Optional[Decimal] = None
+    pansiyon: Optional[str] = None
+    rezervasyon_no: Optional[str] = None
+    notlar: Optional[str] = None
+
+
+class FaturaIsle(BaseModel):
+    """Otelden fatura geldiğinde gerçek tutarı işler."""
+    fatura_no: str
+    fatura_tarihi: date
+    fatura_tutari: Decimal        # vergiler dahil toplam
 
 
 class CikisIstegi(BaseModel):
@@ -132,6 +152,55 @@ def konut_bilgi(db: Session, k: models.Konut) -> dict:
     }
 
 
+# ─── Otel konaklama maliyeti ────────────────────────────────────────
+# Otel faturalarında konaklama bedeline %10 KDV ve %1 konaklama vergisi
+# eklenir. Gecelik ücret vergiler dahil (brüt) tutulur; net ve vergi
+# kırılımı buradan üretilir.
+KDV_ORANI = 0.10
+KONAKLAMA_VERGISI_ORANI = 0.01
+
+
+def _gece_sayisi(giris, cikis) -> int:
+    """Konaklanan gece sayısı. Çıkış yapılmamışsa bugüne kadar sayılır."""
+    bitis = cikis or date.today()
+    return max((bitis - giris).days, 0)
+
+
+def _konaklama_maliyeti(kn: models.Konaklama) -> dict:
+    """Bir konaklama kaydının maliyetini hesaplar.
+
+    Fatura işlenmişse gerçek tutar esas alınır; işlenmemişse gecelik
+    ücret üzerinden tahmin üretilir. Böylece fatura gelmeden de
+    elde bir rakam bulunur.
+    """
+    gece = _gece_sayisi(kn.giris_tarihi, kn.cikis_tarihi)
+
+    # Kayıtta gecelik yoksa konutun varsayılanı kullanılır
+    gecelik = kn.gecelik_ucret
+    if gecelik is None and kn.konut:
+        gecelik = kn.konut.gecelik_ucret
+    gecelik = float(gecelik or 0)
+
+    tahmini = round(gecelik * gece, 2)
+    faturali = kn.fatura_tutari is not None
+    tutar = float(kn.fatura_tutari) if faturali else tahmini
+
+    # Brüt tutardan net ve vergileri ayrıştır
+    carpan = 1 + KDV_ORANI + KONAKLAMA_VERGISI_ORANI
+    net = round(tutar / carpan, 2) if tutar else 0.0
+
+    return {
+        "gece_sayisi": gece,
+        "gecelik_ucret": gecelik,
+        "tahmini_tutar": tahmini,
+        "faturalandi": faturali,
+        "tutar": tutar,
+        "net_tutar": net,
+        "kdv": round(net * KDV_ORANI, 2),
+        "konaklama_vergisi": round(net * KONAKLAMA_VERGISI_ORANI, 2),
+    }
+
+
 def konaklama_bilgi(kn: models.Konaklama) -> dict:
     p = kn.personel
     return {
@@ -145,8 +214,14 @@ def konaklama_bilgi(kn: models.Konaklama) -> dict:
         "telefon": p.telefon if p else None,
         "giris_tarihi": str(kn.giris_tarihi),
         "cikis_tarihi": str(kn.cikis_tarihi) if kn.cikis_tarihi else None,
-        "gun_sayisi": ((kn.cikis_tarihi or date.today()) - kn.giris_tarihi).days,
+        "gun_sayisi": _gece_sayisi(kn.giris_tarihi, kn.cikis_tarihi),
         "oda_no": kn.oda_no,
+        "pansiyon": kn.pansiyon,
+        "rezervasyon_no": kn.rezervasyon_no,
+        "fatura_no": kn.fatura_no,
+        "fatura_tarihi": str(kn.fatura_tarihi) if kn.fatura_tarihi else None,
+        "otel_mi": kn.konut.tur == models.KonutTur.otel if kn.konut else False,
+        **_konaklama_maliyeti(kn),
         "aktif": kn.aktif,
         "notlar": kn.notlar,
     }
@@ -344,6 +419,84 @@ def _yaka_uyumu(personel, konut) -> Optional[str]:
         return (f"{personel.ad} {personel.soyad} beyaz yaka; genellikle kiralık evde kalır. "
                 f"'{konut.ad}' bir kamp.")
     return None
+
+
+@router.put("/kayitlar/{kid}")
+def konaklama_guncelle(kid: int, veri: KonaklamaGuncelle, db: Session = Depends(get_db),
+                       kullanici: models.Kullanici = Depends(aktif_kullanici)):
+    """Konaklama kaydını günceller (oda, gecelik ücret, pansiyon vb.)."""
+    _yetki(kullanici)
+    kn = db.query(models.Konaklama).filter(models.Konaklama.id == kid).first()
+    if not kn:
+        raise HTTPException(status_code=404, detail="Konaklama kaydı bulunamadı")
+    for alan, deger in veri.model_dump(exclude_unset=True).items():
+        setattr(kn, alan, deger)
+    db.commit(); db.refresh(kn)
+    return konaklama_bilgi(kn)
+
+
+@router.post("/kayitlar/{kid}/fatura")
+def fatura_isle(kid: int, veri: FaturaIsle, db: Session = Depends(get_db),
+                kullanici: models.Kullanici = Depends(aktif_kullanici)):
+    """Otel faturasını konaklama kaydına işler.
+
+    Fatura işlendikten sonra tahmini tutarın yerini gerçek tutar alır;
+    tahmin ile fatura arasındaki fark da döner, böylece sapma görülür.
+    """
+    _yetki(kullanici)
+    kn = db.query(models.Konaklama).filter(models.Konaklama.id == kid).first()
+    if not kn:
+        raise HTTPException(status_code=404, detail="Konaklama kaydı bulunamadı")
+
+    onceki = _konaklama_maliyeti(kn)
+    kn.fatura_no = veri.fatura_no
+    kn.fatura_tarihi = veri.fatura_tarihi
+    kn.fatura_tutari = veri.fatura_tutari
+    db.commit(); db.refresh(kn)
+
+    sonuc = konaklama_bilgi(kn)
+    sonuc["tahminden_fark"] = round(float(veri.fatura_tutari) - onceki["tahmini_tutar"], 2)
+    return sonuc
+
+
+@router.get("/otel-ozeti")
+def otel_ozeti(
+    yil: Optional[int] = Query(None),
+    ay: Optional[int] = Query(None, ge=1, le=12),
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(aktif_kullanici),
+):
+    """Otel konaklamalarının kişi bazlı dökümü.
+
+    Kimin kaç gece kaldığı ve maliyeti; fatura kesilmemiş olanlarda
+    gecelik ücret üzerinden tahmin gösterilir.
+    """
+    q = db.query(models.Konaklama).join(models.Konut).filter(
+        models.Konut.tur == models.KonutTur.otel
+    )
+    if yil and ay:
+        import calendar
+        son = calendar.monthrange(yil, ay)[1]
+        # Dönem içinde kesişen konaklamalar
+        q = q.filter(
+            models.Konaklama.giris_tarihi <= date(yil, ay, son),
+            or_(models.Konaklama.cikis_tarihi == None,
+                models.Konaklama.cikis_tarihi >= date(yil, ay, 1)),
+        )
+
+    kayitlar = [konaklama_bilgi(k) for k in q.order_by(models.Konaklama.giris_tarihi.desc()).all()]
+
+    return {
+        "toplam_kayit": len(kayitlar),
+        "devam_eden": sum(1 for k in kayitlar if k["aktif"]),
+        "toplam_gece": sum(k["gece_sayisi"] for k in kayitlar),
+        "faturalanan": sum(1 for k in kayitlar if k["faturalandi"]),
+        "faturalanmamis": sum(1 for k in kayitlar if not k["faturalandi"]),
+        "toplam_tutar": round(sum(k["tutar"] for k in kayitlar), 2),
+        "faturalanan_tutar": round(sum(k["tutar"] for k in kayitlar if k["faturalandi"]), 2),
+        "bekleyen_tutar": round(sum(k["tutar"] for k in kayitlar if not k["faturalandi"]), 2),
+        "veriler": kayitlar,
+    }
 
 
 @router.post("/kayitlar/{kid}/cikis")

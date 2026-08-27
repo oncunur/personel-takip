@@ -20,11 +20,14 @@ const KonaklamaModul = (() => {
   };
 
 
+  let otelOzeti = null;
+
   async function veriYukle() {
     const [kd, yd, gd, od] = await Promise.all([
       O.api('/konaklama/konutlar'), O.api('/konaklama/kayitlar?sadece_aktif=false'),
       O.api('/konaklama/giderler'), O.api('/konaklama/ozet'),
     ]);
+    otelOzeti = await O.api('/konaklama/otel-ozeti').catch(() => null);
     konutlar = kd.veriler; kayitlar = yd.veriler; giderler = gd.veriler; ozet = od;
   }
 
@@ -225,7 +228,7 @@ const KonaklamaModul = (() => {
         </div>
       </div>
 
-      <div class="panel" style="overflow-x:auto">
+      <div class="panel" style="overflow-x:auto;margin-bottom:var(--sp-m)">
         <table class="personel-tablo idari-tablo">
           <thead><tr><th>Otel</th><th>Konum</th><th>Doluluk</th><th>Gecelik</th><th>Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(k => `
@@ -242,11 +245,59 @@ const KonaklamaModul = (() => {
             </tr>`).join('') : O.bosSatir('Otel kaydı yok', 7)}
           </tbody>
         </table>
-      </div>`;
+      </div>
+
+      ${otelDokumu(y)}`;
 
     const ara = document.getElementById('otl-arama');
     ara.oninput = e => { arama = e.target.value; otellerGovde(y); ara.focus(); };
     document.getElementById('otl-durum').onchange = e => { filtreDurum = e.target.value; otellerGovde(y); };
+  }
+
+  // Kişi bazlı konaklama dökümü: kim, hangi oda, kaç gece, ne kadar.
+  // Fatura kesilmemiş kayıtlarda gecelik ücretten tahmin gösterilir.
+  function otelDokumu(y) {
+    if (!otelOzeti || !otelOzeti.veriler.length) return '';
+    const o = otelOzeti;
+    const tl = v => O.tl(v);
+
+    return `
+      <div class="panel" style="overflow-x:auto">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Konaklama Dökümü</span>
+          <span style="font-size:12px;font-weight:400;color:var(--text-2)">
+            ${o.toplam_kayit} kayıt · ${o.toplam_gece} gece ·
+            faturalanan ${tl(o.faturalanan_tutar)} ·
+            <strong style="color:var(--warning)">bekleyen ${tl(o.bekleyen_tutar)}</strong>
+          </span>
+        </div>
+        <table class="personel-tablo idari-tablo">
+          <thead><tr>
+            <th>Personel</th><th>Otel</th><th>Oda</th><th>Giriş</th><th>Çıkış</th>
+            <th>Gece</th><th>Gecelik</th><th>Tutar</th><th>Fatura</th><th>İşlem</th>
+          </tr></thead>
+          <tbody>${o.veriler.map(k => `
+            <tr${k.faturalandi ? '' : ' style="background:var(--warning-bg)"'}>
+              <td><strong>${O.kacir(k.personel_ad || '—')}</strong>
+                  ${k.pansiyon ? `<span class="hucre-alt">${O.kacir(k.pansiyon)}</span>` : ''}</td>
+              <td>${O.kacir(k.konut_ad || '—')}<span class="hucre-alt">${O.kacir(k.konut_kod || '')}</span></td>
+              <td>${O.kacir(k.oda_no || '—')}</td>
+              <td>${O.tarih(k.giris_tarihi)}</td>
+              <td>${k.cikis_tarihi ? O.tarih(k.cikis_tarihi) : '<span style="color:var(--primary)">devam ediyor</span>'}</td>
+              <td><strong>${k.gece_sayisi}</strong></td>
+              <td>${tl(k.gecelik_ucret)}</td>
+              <td><strong>${tl(k.tutar)}</strong>
+                  <span class="hucre-alt">net ${tl(k.net_tutar)}</span></td>
+              <td>${k.faturalandi
+                    ? `${O.rozet(O.kacir(k.fatura_no), '#00802F')}<span class="hucre-alt">${O.tarih(k.fatura_tarihi)}</span>`
+                    : O.rozet('bekliyor', '#855900')}</td>
+              <td class="islem-td">
+                ${y && !k.faturalandi ? `<button class="btn-mini" onclick="KonaklamaModul.faturaAc(${k.id})">Fatura işle</button>` : ''}
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
   }
 
   function sakinlerGovde(y) {
@@ -464,6 +515,46 @@ const KonaklamaModul = (() => {
           O.modalKapat(); render();
           // Yerleştirme yaka tipiyle uyuşmuyorsa kayıt yapılır ama uyarılır
           if (s && s.uyari) alert('Kayıt oluşturuldu.\n\nDikkat: ' + s.uyari);
+        } catch (err) { O.hataGoster(err.message); }
+      };
+    },
+
+    // Otelden fatura geldiğinde gerçek tutarı işler; tahminle
+    // arasındaki fark bildirilir.
+    faturaAc(id) {
+      const k = (otelOzeti && otelOzeti.veriler.find(x => x.id === id)) || null;
+      if (!k) return;
+      const g = O.modalAc(`Fatura İşle — ${k.personel_ad}`, `
+        <form id="fat-form" class="modal-form">
+          <div class="fatura-ozet">
+            <div><span>Otel</span><strong>${O.kacir(k.konut_ad)}${k.oda_no ? ' · Oda ' + O.kacir(k.oda_no) : ''}</strong></div>
+            <div><span>Konaklama</span><strong>${O.tarih(k.giris_tarihi)} – ${k.cikis_tarihi ? O.tarih(k.cikis_tarihi) : 'devam ediyor'}</strong></div>
+            <div><span>Gece</span><strong>${k.gece_sayisi} gece × ${O.tl(k.gecelik_ucret)}</strong></div>
+            <div><span>Tahmini tutar</span><strong style="color:var(--primary)">${O.tl(k.tahmini_tutar)}</strong></div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group"><label>Fatura No *</label>
+              <input name="fatura_no" required placeholder="LDE2026000000215" /></div>
+            <div class="form-group"><label>Fatura Tarihi *</label>
+              <input type="date" name="fatura_tarihi" required value="${O.bugun()}" /></div>
+          </div>
+          <div class="form-group"><label>Fatura Tutarı (vergiler dahil) *</label>
+            <input type="number" name="fatura_tutari" step="0.01" required value="${k.tahmini_tutar}" />
+            <span class="hucre-alt">Faturadaki "Ödenecek Tutar" — KDV %10 ve konaklama vergisi %1 dahil.</span></div>
+          ${O.formHata()}${O.modalFooter('Faturayı İşle')}
+        </form>`);
+
+      g.querySelector('#fat-form').onsubmit = async e => {
+        e.preventDefault();
+        try {
+          const s = await O.api(`/konaklama/kayitlar/${id}/fatura`, {
+            method: 'POST', body: JSON.stringify(O.formVeri(e.target, ['fatura_tutari'])),
+          });
+          await veriYukle();
+          O.modalKapat(); render();
+          const fark = s.tahminden_fark;
+          alert(`Fatura işlendi: ${O.tl(s.tutar)}`
+            + (fark ? `\n\nTahminden fark: ${fark > 0 ? '+' : ''}${O.tl(fark)}` : '\n\nTahmin tuttu.'));
         } catch (err) { O.hataGoster(err.message); }
       };
     },

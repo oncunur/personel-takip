@@ -897,6 +897,20 @@ html, body {
   border-left:1px solid var(--border-split);
 }
 
+/* Fatura işleme penceresindeki konaklama özeti */
+.fatura-ozet {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: var(--sp-s) var(--sp-m);
+  margin-bottom: var(--sp-m);
+  font-size: 13px;
+}
+.fatura-ozet > div {
+  display: flex; justify-content: space-between; gap: var(--sp-s);
+  padding: 3px 0;
+}
+.fatura-ozet span { color: var(--text-2); }
+
 /* Bilgi şeridi (otel konaklaması gibi bağlam notları) */
 .pano-bilgi-serit {
   background: var(--primary-light);
