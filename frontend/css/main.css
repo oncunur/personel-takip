@@ -623,6 +623,103 @@ html, body {
   .grafik-grid-2 { grid-template-columns: 1fr; }
 }
 
+/* ── Anasayfa panosu ─────────────────────────────────────────────── */
+.pano-baslik {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-m);
+  margin-bottom: var(--sp-m);
+}
+.pano-baslik h2 { font-size: 20px; font-weight: 700; color: var(--text); line-height: 26px; }
+.pano-alt { font-size: 12px; color: var(--text-3); }
+
+/* Grafikler yan yana; dar ekranda alt alta iner */
+.pano-grafik-satir {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-m);
+  margin-bottom: var(--sp-m);
+}
+.pano-grafik .panel-header {
+  background: none;
+  border-bottom: 1px solid var(--border-split);
+}
+/* Canvas'ın kapsayıcıyı şişirmemesi için sabit yükseklik gerekir */
+.pano-tuval { height: 220px; padding: var(--sp-m) var(--sp-l); }
+.pano-tuval-genis { height: 180px; }
+.pano-tuval canvas { max-height: 100%; }
+
+/* ── Anasayfa panosu (Cloudscape dashboard deseni) ───────────────── */
+
+/* Sayfa başlığı: 24px kalın başlık + ikincil açıklama */
+.pano-sayfa-bas { margin-bottom: var(--sp-m); }
+.pano-sayfa-bas h1 { font-size: 24px; font-weight: 700; color: var(--text); line-height: 30px; }
+.pano-sayfa-bas p { font-size: 14px; color: var(--text-2); margin-top: 2px; }
+
+/* Container: başlık + açıklama bloğu, sonra gövde */
+.pano-container { margin-bottom: var(--sp-m); }
+.pano-container-bas {
+  padding: var(--sp-m) var(--sp-l) var(--sp-s);
+  border-bottom: 1px solid var(--border-split);
+}
+.pano-container-bas h3 { font-size: 18px; font-weight: 700; color: var(--text); line-height: 22px; }
+.pano-container-bas p { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.pano-govde { padding: var(--sp-l); font-size: 14px; }
+
+/* KPI satırı: dikey ayraçlarla bölünmüş büyük değerler */
+.pano-kpi-satir {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  padding: var(--sp-l);
+  gap: var(--sp-l);
+}
+.pano-kpi { display: flex; flex-direction: column; gap: 2px; padding-left: var(--sp-l); border-left: 1px solid var(--border-split); }
+.pano-kpi:first-child { padding-left: 0; border-left: none; }
+.pano-kpi-etiket { font-size: 14px; font-weight: 700; color: var(--text); }
+/* Cloudscape'te KPI değeri 42px, kalın ve marka mavisi */
+.pano-kpi-deger { font-size: 42px; font-weight: 700; color: var(--primary); line-height: 48px; }
+.pano-kpi-link { text-decoration: none; cursor: pointer; }
+.pano-kpi-link:hover { text-decoration: underline; }
+.pano-kpi-alt { font-size: 12px; color: var(--text-2); }
+
+/* Container ızgarası */
+.pano-satir { display: grid; gap: var(--sp-m); margin-bottom: 0; }
+.pano-satir-1-1 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.pano-satir-2-1 { grid-template-columns: 2fr 1fr; }
+@media (max-width: 900px) { .pano-satir-2-1 { grid-template-columns: 1fr; } }
+
+/* Aksiyon listesi */
+.pano-liste-satir {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-m);
+  padding: var(--sp-s) var(--sp-l);
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 14px; cursor: pointer;
+  transition: background .15s;
+}
+.pano-liste-satir:last-child { border-bottom: none; }
+.pano-liste-satir:hover { background: var(--gray-50); }
+.pano-bos { display: flex; flex-direction: column; gap: 2px; color: var(--text-2); }
+.pano-bos strong { color: var(--text); }
+
+/* Modül özet listesi */
+.pano-mini-liste { padding: var(--sp-s) var(--sp-l) var(--sp-m); }
+.pano-mini-liste > div {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--sp-s); padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 14px;
+}
+.pano-mini-liste > div:last-child { border-bottom: none; }
+.pano-mini-liste span { color: var(--text-2); }
+.pano-mini-liste strong { color: var(--text); font-weight: 700; white-space: nowrap; }
+
+/* Grafik alanı: canvas kapsayıcıyı şişirmesin diye sabit yükseklik */
+.pano-tuval { height: 240px; padding: var(--sp-m) var(--sp-l) var(--sp-l); }
+.pano-tuval-alcak { height: 190px; }
+.pano-tuval canvas { max-height: 100%; }
+
 /* Form bölüm başlığı (kimlik / görev bilgileri gibi gruplar) */
 .form-bolum-baslik {
   font-size: 12px;

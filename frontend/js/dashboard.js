@@ -53,41 +53,107 @@ function sayfayaGit(sayfa) {
   if (item) item.click();
 }
 
+// ─── Anasayfa panosu ──────────────────────────────────────────────
+// Cloudscape'in "Service dashboard" deseni: sayfa başlığı, tek
+// container içinde dikey ayraçla bölünmüş büyük KPI değerleri,
+// ardından başlıklı ve açıklamalı grafik container'ları.
+
+let anasayfaGrafikleri = [];
+
+// Cloudscape kategorik grafik paleti (design-tokens paketinden)
+const PANO_RENK = ['#688ae8', '#c33d69', '#2ea597', '#8456ce', '#e07941', '#3759ce'];
+const PANO_IZGARA = '#dedee3';
+
+function anasayfaGrafikleriTemizle() {
+  anasayfaGrafikleri.forEach(g => g && g.destroy());
+  anasayfaGrafikleri = [];
+}
+
+// Cloudscape KPI: küçük kalın etiket, altında büyük mavi değer.
+// Değer tıklanabilir olduğunda ilgili modüle götürür.
+function panoKpi(etiket, deger, alt, sayfa) {
+  const govde = sayfa
+    ? `<a href="#" class="pano-kpi-deger pano-kpi-link" onclick="sayfayaGit('${sayfa}');return false">${deger}</a>`
+    : `<span class="pano-kpi-deger">${deger}</span>`;
+  return `<div class="pano-kpi">
+    <span class="pano-kpi-etiket">${Ortak.kacir(etiket)}</span>
+    ${govde}
+    ${alt ? `<span class="pano-kpi-alt">${Ortak.kacir(alt)}</span>` : ''}
+  </div>`;
+}
+
+function panoContainer(baslik, aciklama, icerik, ekSinif = '') {
+  return `<div class="panel pano-container ${ekSinif}">
+    <div class="pano-container-bas">
+      <h3>${Ortak.kacir(baslik)}</h3>
+      ${aciklama ? `<p>${Ortak.kacir(aciklama)}</p>` : ''}
+    </div>
+    ${icerik}
+  </div>`;
+}
+
 function anasayfaIcerigi(kullanici) {
+  anasayfaGrafikleriTemizle();
+  const yonetici = ['admin', 'yonetici'].includes(kullanici.rol);
+
   document.getElementById('content-area').innerHTML = `
-    <div class="hosgeldin-banner">
-      <h3>Merhaba, ${kullanici.ad}! 👋</h3>
-      <p>Personel ve İdari İşler Sistemi'ne hoş geldiniz. Sol menüden modüllere erişebilirsiniz.</p>
+    <div class="pano-sayfa-bas">
+      <h1>Pano</h1>
+      <p>Merhaba ${Ortak.kacir(kullanici.ad)} — sistemdeki güncel durum</p>
     </div>
     <div id="anasayfa-ozet">
-      <div class="idari-stat-grid">
-        ${Array(4).fill('<div class="idari-stat"><span class="idari-stat-label">Yükleniyor</span><strong class="idari-stat-deger">—</strong></div>').join('')}
-      </div>
+      ${panoContainer('Genel Bakış', 'Veriler yükleniyor…',
+        `<div class="pano-kpi-satir">${Array(4).fill(panoKpi('—', '—')).join('')}</div>`)}
     </div>
   `;
-  anasayfaOzetYukle(kullanici).catch(err => {
+
+  anasayfaOzetYukle(kullanici, yonetici).catch(err => {
     const hedef = document.getElementById('anasayfa-ozet');
     if (hedef) {
-      hedef.innerHTML = `<div class="panel"><div class="panel-header">Özet yüklenemedi</div>
-        <div style="padding:20px;font-size:13px;color:var(--gray-500)">${Ortak.kacir(err.message || 'Bilinmeyen hata')}</div></div>`;
+      hedef.innerHTML = panoContainer('Pano yüklenemedi', null,
+        `<div class="pano-govde" style="color:var(--text-2)">${Ortak.kacir(err.message || 'Bilinmeyen hata')}</div>`);
     }
   });
 }
 
-// Personel + idari modüllerin özetlerini tek ekranda toplar.
-// Backend erişilemezse api katmanı hata fırlatır; hata çağıran tarafa iletilir.
-async function anasayfaOzetYukle(kullanici) {
+async function anasayfaOzetYukle(kullanici, yonetici) {
   const O = Ortak;
+  const bugun = new Date();
+  const yil = bugun.getFullYear(), ay = bugun.getMonth() + 1;
+  const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  const saatMetni = v => (v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ','));
 
-  const [genel, konak, dmb, arc, evr, sat, stk] = await Promise.all([
-    O.api('/rapor/genel'), O.api('/konaklama/ozet'), O.api('/demirbas/ozet'),
-    O.api('/arac/ozet'), O.api('/evrak/ozet'), O.api('/satinalma/ozet'), O.api('/stok/ozet'),
+  // Puantaj cetveli yalnızca yöneticiye açık; personel rolünde 403
+  // dönüp tüm panoyu düşürmesin diye ayrıca yakalanır.
+  const [genel, izinTrend, depDagilim, konak, dmb, arc, evr, sat, stk, cetvel] = await Promise.all([
+    O.api('/rapor/genel'),
+    O.api('/rapor/aylik-izin-trend'),
+    O.api('/rapor/departman-dagilim'),
+    O.api('/konaklama/ozet'), O.api('/demirbas/ozet'), O.api('/arac/ozet'),
+    O.api('/evrak/ozet'), O.api('/satinalma/ozet'), O.api('/stok/ozet'),
+    yonetici ? O.api(`/puantaj/cetvel?yil=${yil}&ay=${ay}`).catch(() => null) : Promise.resolve(null),
   ]);
 
   const hedef = document.getElementById('anasayfa-ozet');
   if (!hedef) return;
 
-  // Aksiyon gerektiren her şey tek listede toplanır
+  const saatToplam = cetvel ? cetvel.personeller.reduce((t, p) => t + (p.toplam_saat || 0), 0) : null;
+  const devamsizToplam = cetvel ? cetvel.personeller.reduce((t, p) => t + (p.devamsiz || 0), 0) : null;
+
+  // ── Genel bakış KPI'ları ──
+  const kpiler = [
+    panoKpi('Toplam personel', genel.toplam_personel, `${genel.aktif_personel} aktif · ${genel.toplam_departman} departman`, 'personel'),
+  ];
+  if (yonetici && saatToplam !== null) {
+    kpiler.push(panoKpi('Çalışılan saat', saatMetni(saatToplam), `${AYLAR[ay-1]} ayı toplamı`, 'puantaj'));
+    kpiler.push(panoKpi('Devamsızlık', devamsizToplam, devamsizToplam ? 'bu ay kaydedildi' : 'bu ay yok', 'puantaj'));
+  } else {
+    kpiler.push(panoKpi('İzinli', genel.izinli_personel, 'bugün'));
+  }
+  kpiler.push(panoKpi('Bekleyen izin', genel.bekleyen_izin, genel.bekleyen_izin ? 'onay bekliyor' : 'onay bekleyen yok', 'izin'));
+  if (kpiler.length < 4) kpiler.push(panoKpi('Bu ay izin', genel.bu_ay_izin, 'onaylanmış', 'izin'));
+
+  // ── Bekleyen işler ──
   const isler = [];
   if (genel.bekleyen_izin) isler.push({ sayfa: 'izin', ad: 'Onay bekleyen izin talebi', sayi: genel.bekleyen_izin });
   if (sat && sat.beklemede) isler.push({ sayfa: 'satinalma', ad: 'Onay bekleyen satın alma talebi', sayi: sat.beklemede });
@@ -97,40 +163,107 @@ async function anasayfaOzetYukle(kullanici) {
   if (konak && konak.sozlesme_uyarilari && konak.sozlesme_uyarilari.length) isler.push({ sayfa: 'konaklama', ad: 'Süresi yaklaşan kira sözleşmesi', sayi: konak.sozlesme_uyarilari.length });
   if (konak && konak.odenmemis_gider_sayisi) isler.push({ sayfa: 'konaklama', ad: 'Ödenmemiş konut gideri', sayi: konak.odenmemis_gider_sayisi });
 
+  const islerGovde = isler.length
+    ? `<div class="pano-liste">${isler.map(i => `
+        <div class="pano-liste-satir" onclick="sayfayaGit('${i.sayfa}')">
+          <span>${i.ad}</span>
+          <span class="durum-badge" style="background:${i.sayi > 3 ? '#FFF5F5' : '#FFFEF0'};color:${i.sayi > 3 ? '#DB0000' : '#855900'}">${i.sayi} adet</span>
+        </div>`).join('')}</div>`
+    : `<div class="pano-govde pano-bos">
+         <strong>Bekleyen iş yok</strong>
+         <span>Onay bekleyen talep veya süresi yaklaşan kayıt bulunmuyor.</span>
+       </div>`;
+
   hedef.innerHTML = `
-    ${isler.length ? `<div class="panel uyari-panel">
-      <div class="panel-header">Bekleyen İşler</div>
-      ${isler.map(i => `<div class="uyari-satir" style="cursor:pointer" onclick="sayfayaGit('${i.sayfa}')">
-        <span class="uyari-ad">${i.ad}</span>
-        <span class="uyari-alt">${O.rozet(i.sayi + ' adet', i.sayi > 3 ? '#DB0000' : '#855900')}</span>
-      </div>`).join('')}
-    </div>` : `<div class="panel uyari-panel"><div class="uyari-satir">
-        <span style="color:var(--gray-500)">Bekleyen iş yok — her şey güncel.</span></div></div>`}
+    ${panoContainer('Genel Bakış', `${AYLAR[ay-1]} ${yil} · anlık veriler`,
+      `<div class="pano-kpi-satir">${kpiler.join('')}</div>`)}
 
-    <div class="panel-header" style="background:none;padding-left:0;margin-bottom:8px">Personel</div>
-    ${O.statGrid([
-      { label: 'Toplam Personel', deger: genel.toplam_personel, alt: `${genel.toplam_departman} departman` },
-      { label: 'Aktif', deger: genel.aktif_personel, alt: `${genel.izinli_personel} izinli`, renk: '#00802F' },
-      { label: 'Bekleyen İzin', deger: genel.bekleyen_izin, alt: 'onay bekliyor', renk: genel.bekleyen_izin ? '#855900' : '#00802F' },
-      { label: 'Bu Ay İzin', deger: genel.bu_ay_izin, alt: 'onaylanmış', renk: '#006CE0' },
-    ])}
+    <div class="pano-satir pano-satir-2-1">
+      ${panoContainer('Bekleyen İşler', 'Aksiyon gerektiren kayıtlar', islerGovde)}
+      ${panoContainer('İdari İşler', 'Modül özetleri', `
+        <div class="pano-mini-liste">
+          <div><span>Konaklama</span><strong>${konak ? konak.dolu_yatak : 0}/${konak ? konak.toplam_kapasite : 0} yatak</strong></div>
+          <div><span>Aylık kira</span><strong>${O.tl(konak ? konak.aylik_kira_toplam : 0)}</strong></div>
+          <div><span>Demirbaş</span><strong>${dmb ? dmb.toplam : 0} adet · ${dmb ? dmb.zimmetli : 0} zimmetli</strong></div>
+          <div><span>Araç</span><strong>${arc ? arc.arac_sayisi : 0} adet · ${arc ? arc.atanan : 0} atanmış</strong></div>
+          <div><span>Stok değeri</span><strong>${O.tl(stk ? stk.toplam_deger : 0)}</strong></div>
+        </div>`)}
+    </div>
 
-    <div class="panel-header" style="background:none;padding-left:0;margin:16px 0 8px">İdari İşler</div>
-    ${O.statGrid([
-      { label: 'Konaklama', deger: `${konak ? konak.dolu_yatak : 0}/${konak ? konak.toplam_kapasite : 0}`, alt: `${konak ? konak.konut_sayisi : 0} konut · ${O.tl(konak ? konak.aylik_kira_toplam : 0)} kira` },
-      { label: 'Demirbaş', deger: dmb ? dmb.toplam : 0, alt: `${dmb ? dmb.zimmetli : 0} zimmetli · ${O.tl(dmb ? dmb.toplam_deger : 0)}`, renk: '#006CE0' },
-      { label: 'Araç', deger: arc ? arc.arac_sayisi : 0, alt: `${arc ? arc.atanan : 0} atanmış · ${O.tl(arc ? arc.yillik_gider : 0)} gider`, renk: '#006CE0' },
-      { label: 'Stok Değeri', deger: O.tl(stk ? stk.toplam_deger : 0), alt: `${stk ? stk.urun_sayisi : 0} kalem`, renk: '#00802F' },
-    ])}
+    ${yonetici && cetvel ? panoContainer('Günlük Çalışma Saati',
+      `${AYLAR[ay-1]} ayı, tüm personelin günlük toplamı`,
+      '<div class="pano-tuval pano-tuval-alcak"><canvas id="pano-g-saat"></canvas></div>') : ''}
 
-    <div class="panel" style="margin-top:16px">
-      <div class="panel-header">Hesap Bilgisi</div>
-      <div style="padding:20px;font-size:13px;color:var(--gray-500);line-height:2">
-        <div>Rol: ${rolBadge(kullanici.rol)}</div>
-        <div style="margin-top:8px">E-posta: <strong style="color:var(--gray-700)">${kullanici.email}</strong></div>
-        <div>Kullanıcı Adı: <strong style="color:var(--gray-700)">${kullanici.kullanici_adi}</strong></div>
-      </div>
+    <div class="pano-satir pano-satir-1-1">
+      ${panoContainer('İzin Talebi Trendi', `${yil} yılı, aylık talep sayısı`,
+        '<div class="pano-tuval"><canvas id="pano-g-izin"></canvas></div>')}
+      ${panoContainer('Departman Dağılımı', 'Aktif personelin departmanlara göre dağılımı',
+        '<div class="pano-tuval"><canvas id="pano-g-departman"></canvas></div>')}
     </div>`;
+
+  panoGrafikleriCiz(izinTrend, depDagilim, cetvel, AYLAR);
+}
+
+function panoGrafikleriCiz(izinTrend, depDagilim, cetvel, AYLAR) {
+  anasayfaGrafikleriTemizle();
+
+  const izgara = { color: PANO_IZGARA, drawBorder: false };
+  const ortak = { responsive: true, maintainAspectRatio: false };
+
+  const saatTuval = document.getElementById('pano-g-saat');
+  if (saatTuval && cetvel) {
+    const saatler = cetvel.gunler.map(g =>
+      cetvel.personeller.reduce((t, p) => t + (p.gunler[String(g.gun)].saat || 0), 0));
+    anasayfaGrafikleri.push(new Chart(saatTuval, {
+      type: 'bar',
+      data: {
+        labels: cetvel.gunler.map(g => g.gun),
+        datasets: [{
+          label: 'Çalışılan saat', data: saatler,
+          // Hafta tatili günleri nötr renkte kalır
+          backgroundColor: cetvel.gunler.map(g => g.hafta_sonu ? '#C6C6CD' : PANO_RENK[0]),
+          borderRadius: 2, borderSkipped: false,
+        }],
+      },
+      options: { ...ortak,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: c => `${c.parsed.y} saat` } } },
+        scales: { y: { beginAtZero: true, grid: izgara, border: { display: false } },
+                  x: { grid: { display: false } } } },
+    }));
+  }
+
+  const izinTuval = document.getElementById('pano-g-izin');
+  if (izinTuval && izinTrend) {
+    anasayfaGrafikleri.push(new Chart(izinTuval, {
+      type: 'line',
+      data: {
+        labels: AYLAR.map(a => a.slice(0, 3)),
+        datasets: [{
+          label: 'Talep', data: izinTrend.map(t => t.talep_sayisi),
+          borderColor: PANO_RENK[0], backgroundColor: 'rgba(104,138,232,.14)',
+          borderWidth: 2, fill: true, tension: .3, pointRadius: 3, pointHoverRadius: 5,
+        }],
+      },
+      options: { ...ortak, plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: izgara, border: { display: false } },
+                  x: { grid: { display: false } } } },
+    }));
+  }
+
+  const depTuval = document.getElementById('pano-g-departman');
+  if (depTuval && depDagilim && depDagilim.length) {
+    anasayfaGrafikleri.push(new Chart(depTuval, {
+      type: 'doughnut',
+      data: {
+        labels: depDagilim.map(d => d.departman),
+        datasets: [{ data: depDagilim.map(d => d.sayi), backgroundColor: PANO_RENK,
+                     borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }],
+      },
+      options: { ...ortak, cutout: '62%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 12 } } } } },
+    }));
+  }
 }
 
 // Sayfa yükleyiciler — her modül kendi durumunu yönetir
