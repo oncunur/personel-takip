@@ -4,13 +4,20 @@
 const KullaniciModul = (() => {
   const O = Ortak;
   let kullanicilar = [];
+  let yedekler = [];
 
   const ROL = { admin: 'Admin', yonetici: 'Yönetici', personel: 'Personel' };
   const ROL_RENK = { admin: '#006CE0', yonetici: '#3B82F6', personel: '#00802F' };
 
   async function veriYukle() {
     kullanicilar = await O.api('/auth/kullanicilar');
+    // Yedekleme yalnızca admin'e açık; hata panelin tamamını düşürmesin
+    yedekler = await O.api('/yedek').then(d => d.veriler).catch(() => []);
   }
+
+  const boyutMetni = b => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB';
+  const tarihMetni = t => new Date(t).toLocaleString('tr-TR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   function render() {
     const ben = Auth.getKullanici();
@@ -40,6 +47,21 @@ const KullaniciModul = (() => {
           </tr></thead>
           <tbody>${kullanicilar.length ? kullanicilar.map(k => satir(k, ben)).join('') : O.bosSatir('Kullanıcı bulunamadı', 6)}</tbody>
         </table>
+      </div>
+
+      <div class="panel" style="margin-top:var(--sp-m)">
+        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Veritabanı Yedekleri</span>
+          <button class="btn-yeni" onclick="KullaniciModul.yedekAl()" id="yedek-al-btn">Yedek Al</button>
+        </div>
+        <div style="padding:var(--sp-s) var(--sp-l);font-size:13px;color:var(--text-2)">
+          Tüm veri tek bir dosyada tutuluyor. Yedekler sunucuda saklanır ve
+          en yeni 30 tanesi korunur. <span id="yedek-durum"></span>
+        </div>
+        <table class="personel-tablo idari-tablo">
+          <thead><tr><th>Yedek</th><th>Tarih</th><th>Boyut</th><th>İşlem</th></tr></thead>
+          <tbody id="yedek-tbody">${yedekSatirlari()}</tbody>
+        </table>
       </div>`);
   }
 
@@ -60,8 +82,56 @@ const KullaniciModul = (() => {
       </tr>`;
   }
 
+  function yedekSatirlari() {
+    if (!yedekler.length) return O.bosSatir('Henüz yedek alınmamış', 4);
+    return yedekler.map(y => `
+      <tr>
+        <td><strong>${O.kacir(y.ad)}</strong></td>
+        <td>${tarihMetni(y.tarih)}</td>
+        <td>${boyutMetni(y.boyut)}</td>
+        <td class="islem-td">
+          <button class="btn-mini" onclick="KullaniciModul.yedekIndir('${O.kacir(y.ad)}')">İndir</button>
+        </td>
+      </tr>`).join('');
+  }
+
   return {
     async yukle() { await veriYukle(); render(); },
+
+    async yedekAl() {
+      const btn = document.getElementById('yedek-al-btn');
+      const durum = document.getElementById('yedek-durum');
+      btn.disabled = true;
+      durum.textContent = 'Yedek alınıyor…';
+      try {
+        const s = await O.api('/yedek', { method: 'POST' });
+        const kayit = Object.values(s.kayit_sayilari).reduce((a, b) => a + b, 0);
+        durum.textContent = `${s.ad} alındı — ${kayit} kayıt, ${boyutMetni(s.boyut)}.`;
+        yedekler = await O.api('/yedek').then(d => d.veriler);
+        document.getElementById('yedek-tbody').innerHTML = yedekSatirlari();
+      } catch (err) {
+        durum.textContent = 'Alınamadı: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    },
+
+    yedekIndir(ad) {
+      // Dosya indirme fetch ile değil, tarayıcının kendi akışıyla yapılır
+      const token = Auth.getToken();
+      fetch(`http://localhost:8000/yedek/indir/${encodeURIComponent(ad)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.blob() : Promise.reject(new Error('İndirilemedi')))
+        .then(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = ad;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        })
+        .catch(err => alert(err.message));
+    },
 
     yeniKullanici() {
       const g = O.modalAc('Yeni Kullanıcı', `

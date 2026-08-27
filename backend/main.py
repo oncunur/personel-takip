@@ -15,6 +15,7 @@ from routers import evrak as evrak_router
 from routers import satinalma as satinalma_router
 from routers import stok as stok_router
 from routers import ziyaretci as ziyaretci_router
+from routers import yedekleme as yedek_router
 import models
 import sema
 import auth as auth_utils
@@ -48,6 +49,7 @@ app.include_router(evrak_router.router)
 app.include_router(satinalma_router.router)
 app.include_router(stok_router.router)
 app.include_router(ziyaretci_router.router)
+app.include_router(yedek_router.router)
 
 
 @app.on_event("startup")

@@ -1,5 +1,8 @@
 # Veritabanı (gerçek personel verisi içerir — repoya girmemeli)
 *.db
+
+# Yedekler de gerçek veri içerir
+yedekler/
 *.sqlite
 *.sqlite3
 
