@@ -66,7 +66,7 @@ const PersonelModul = (() => {
     const tbody = document.getElementById('personel-tbody');
     if (!tbody) return;
     if (!liste.length) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
       document.getElementById('personel-toplam').textContent = '0 personel';
       return;
     }
@@ -82,17 +82,20 @@ const PersonelModul = (() => {
             </div>
           </div>
         </td>
-        <td><span style="color:var(--gray-700)">${K(p.pozisyon)}</span></td>
-        <td>${p.yaka ? `<span class="durum-badge" style="background:${yakaRenk[p.yaka]}1f;color:${yakaRenk[p.yaka]}">${yakaEtiket[p.yaka]}</span>` : '—'}</td>
-        <td><span class="departman-chip">${K(p.departman_ad)}</span></td>
-        <td>${p.uyruk ? `<span class="uyruk-etiket" title="${Ortak.kacir(p.uyruk_ad || '')}">${Ortak.kacir(p.uyruk)}</span>` : '—'}</td>
-        <td>${K(p.telefon)}</td>
+        <td>
+          <span style="color:var(--gray-700)">${K(p.pozisyon)}</span>
+          <span class="hucre-alt">${K(p.departman_ad)}</span>
+        </td>
+        <td>
+          ${p.yaka ? `<span class="durum-badge" style="background:${yakaRenk[p.yaka]}1f;color:${yakaRenk[p.yaka]}">${yakaEtiket[p.yaka]}</span>` : '<span style="color:var(--gray-400)">—</span>'}
+          ${p.uyruk ? `<span class="hucre-alt" title="${Ortak.kacir(p.uyruk_ad || '')}">${Ortak.kacir(p.uyruk_ad || p.uyruk)}</span>` : ''}
+        </td>
         <td>
           <span class="durum-badge" style="background:${durumRenk[p.durum]}22;color:${durumRenk[p.durum]}">
             ${durumEtiket[p.durum]}
           </span>
         </td>
-        <td class="islem-td">
+        <td class="islem"><div class="islem-grup">
           <button class="btn-ikon" onclick="PersonelModul.detayAc(${p.id})" title="Detay">
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
           </button>
@@ -102,6 +105,7 @@ const PersonelModul = (() => {
           <button class="btn-ikon btn-sil" onclick="PersonelModul.sil(${p.id}, '${Ortak.kacir((p.ad + ' ' + p.soyad).replace(/'/g, ''))}')" title="Sil">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
           </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -147,11 +151,11 @@ const PersonelModul = (() => {
         <table class="personel-tablo">
           <thead>
             <tr>
-              <th>Personel</th><th>Pozisyon</th><th>Yaka</th><th>Departman</th><th>Uyruk</th><th>Telefon</th><th>Durum</th><th>İşlemler</th>
+              <th>Personel</th><th>Pozisyon</th><th>Yaka / Uyruk</th><th class="opsiyonel">Durum</th><th class="islem">İşlemler</th>
             </tr>
           </thead>
           <tbody id="personel-tbody">
-            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
           </tbody>
         </table>
       </div>

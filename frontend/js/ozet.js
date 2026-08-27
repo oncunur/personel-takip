@@ -41,23 +41,17 @@ const OzetModul = (() => {
     const calisilan = veriler.reduce((a,v) => a + (v.calisilan_gun||0), 0);
     const devamsiz  = veriler.reduce((a,v) => a + (v.devamsiz_gun||0), 0);
     const izinli    = veriler.reduce((a,v) => a + (v.izinli_gun||0), 0);
-    const fm        = veriler.reduce((a,v) => a + (v.fazla_mesai||0), 0);
-    const brutTop   = veriler.reduce((a,v) => a + (v.brut_maas||0), 0);
-    const kesTop    = veriler.reduce((a,v) => a + ((v.sgk_isci||0)+(v.issizlik_isci||0)+(v.gelir_vergisi||0)+(v.damga_vergisi||0)), 0);
     const netTop    = veriler.reduce((a,v) => a + (v.net_maas||0), 0);
     const bordroSayisi = veriler.filter(v => v.bordro_id).length;
     return `
       <tr class="ozet-toplam-satir">
-        <td colspan="3">
+        <td>
           <strong>Toplam</strong>
-          <span style="font-size:11px;color:var(--gray-400);margin-left:8px">${veriler.length} personel · ${bordroSayisi} bordro</span>
+          <span class="hucre-alt">${veriler.length} personel · ${bordroSayisi} bordro</span>
         </td>
         <td class="ozet-sayi" style="color:#00802F;font-weight:700">${calisilan}</td>
         <td class="ozet-sayi" style="color:#DB0000;font-weight:700">${devamsiz||'—'}</td>
         <td class="ozet-sayi" style="color:#006CE0;font-weight:700">${izinli||'—'}</td>
-        <td class="ozet-sayi" style="color:#855900;font-weight:700">${fm > 0 ? fm + 's' : '—'}</td>
-        <td class="ozet-sayi"><strong>${tl(brutTop||null)}</strong></td>
-        <td class="ozet-sayi" style="color:#DB0000"><strong>${tl(kesTop||null)}</strong></td>
         <td class="ozet-sayi" style="color:#00802F"><strong>${tl(netTop||null)}</strong></td>
         <td></td>
       </tr>`;
@@ -71,21 +65,16 @@ const OzetModul = (() => {
     }
 
     const satirlar = veriler.map(v => {
-      const kesinti = v.brut_maas
-        ? (v.sgk_isci||0)+(v.issizlik_isci||0)+(v.gelir_vergisi||0)+(v.damga_vergisi||0)
-        : null;
       return `
         <tr>
-          <td><strong style="color:var(--gray-800)">${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}</strong></td>
-          <td><span style="font-size:12px;color:var(--gray-500)">${Ortak.kacir(v.departman || '—')}</span></td>
-          <td style="font-size:12px;color:var(--gray-500)">${Ortak.kacir(v.pozisyon || '—')}</td>
+          <td>
+            <strong style="color:var(--gray-800)">${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}</strong>
+            <span class="hucre-alt">${Ortak.kacir(v.pozisyon || '—')}${v.departman ? ' · ' + Ortak.kacir(v.departman) : ''}</span>
+          </td>
           <td class="ozet-sayi" style="color:#00802F;font-weight:600">${v.calisilan_gun}</td>
           <td class="ozet-sayi ${v.devamsiz_gun > 0 ? 'ozet-devamsiz' : 'ozet-sifir'}">${v.devamsiz_gun > 0 ? v.devamsiz_gun : '—'}</td>
           <td class="ozet-sayi ${v.izinli_gun > 0 ? 'ozet-izinli' : 'ozet-sifir'}">${v.izinli_gun > 0 ? v.izinli_gun : '—'}</td>
-          <td class="ozet-sayi ${v.fazla_mesai > 0 ? 'ozet-fm' : 'ozet-sifir'}">${v.fazla_mesai > 0 ? v.fazla_mesai + 's' : '—'}</td>
-          <td class="ozet-sayi">${tl(v.brut_maas)}</td>
-          <td class="ozet-sayi" style="${kesinti ? 'color:#DB0000' : ''}">${tl(kesinti)}</td>
-          <td class="ozet-sayi" style="${v.net_maas ? 'color:#00802F;font-weight:600' : ''}">${tl(v.net_maas)}</td>
+          <td class="ozet-sayi" style="${v.net_maas ? 'color:#00802F;font-weight:600' : 'color:var(--gray-400)'}">${tl(v.net_maas)}</td>
           <td style="text-align:center">${durumBadge(v.bordro_durum)}</td>
         </tr>`;
     }).join('');
@@ -94,15 +83,13 @@ const OzetModul = (() => {
       <table class="ozet-tablo">
         <thead>
           <tr class="ozet-baslik-ust">
-            <th rowspan="2" style="text-align:left;min-width:140px">Personel</th>
-            <th rowspan="2" style="text-align:left;min-width:120px">Departman</th>
-            <th rowspan="2" style="text-align:left;min-width:140px">Pozisyon</th>
-            <th colspan="4" class="ozet-grup-puantaj">Puantaj</th>
-            <th colspan="4" class="ozet-grup-bordro">Bordro</th>
+            <th rowspan="2" style="text-align:left;min-width:180px">Personel</th>
+            <th colspan="3" class="ozet-grup-puantaj">Puantaj</th>
+            <th colspan="2" class="ozet-grup-bordro">Bordro</th>
           </tr>
           <tr class="ozet-baslik-alt">
-            <th>Çal. Gün</th><th>Devamsız</th><th>İzinli</th><th>FM (s)</th>
-            <th>Brüt Maaş</th><th>Kesintiler</th><th>Net Maaş</th><th>Durum</th>
+            <th>Çal. Gün</th><th>Devamsız</th><th>İzinli</th>
+            <th>Net Maaş</th><th>Durum</th>
           </tr>
         </thead>
         <tbody>
@@ -162,11 +149,11 @@ const OzetModul = (() => {
     async exportCSV() {
       const data = await apiFetch(`/ozet/aylik?yil=${secilenYil}&ay=${secilenAy}`);
       const veriler = data.veriler;
-      const baslik = ['Ad Soyad','Departman','Pozisyon','Çalışılan Gün','Devamsız','İzinli','FM (s)','Brüt Maaş','Kesintiler','Net Maaş','Bordro Durum'];
+      const baslik = ['Ad Soyad','Departman','Pozisyon','Çalışılan Gün','Devamsız','İzinli','Brüt Maaş','Kesintiler','Net Maaş','Bordro Durum'];
       const satirlar = [baslik, ...veriler.map(v => {
         const kes = v.brut_maas ? ((v.sgk_isci||0)+(v.issizlik_isci||0)+(v.gelir_vergisi||0)+(v.damga_vergisi||0)).toFixed(2) : '';
         return [`${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}`, v.departman||'', v.pozisyon||'',
-          v.calisilan_gun, v.devamsiz_gun, v.izinli_gun, v.fazla_mesai,
+          v.calisilan_gun, v.devamsiz_gun, v.izinli_gun,
           v.brut_maas||'', kes, v.net_maas||'', DURUM_METIN[v.bordro_durum]||'Bordro Yok'];
       })];
       const icerik = '﻿' + satirlar.map(r => r.join(',')).join('\n');

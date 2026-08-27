@@ -24,7 +24,11 @@ VERGI_DILIMLERI = [
 SGK_ISCI    = Decimal("0.14")
 ISSIZLIK    = Decimal("0.01")
 DAMGA       = Decimal("0.00759")
-FAZLA_KATSAYI = Decimal("1.5")   # 1 saat fazla mesai = 1.5 saatlik ücret
+
+# Fazla mesai maaşa dahil olduğu için ayrı bir ücret kalemi doğurmaz;
+# saat bilgisi puantajda kayıtlı kalır ama bordroya çarpanla yansımaz.
+# Aylık ücret, ayın çalışılabilir gün sayısına (Pazar hariç) oranlanır —
+# önceki 22 gün / 176 saat varsayımı 6 günlük çalışma düzenine uymuyordu.
 
 
 def gelir_vergisi_hesapla(vergi_matrahi: Decimal) -> Decimal:
@@ -40,12 +44,25 @@ def gelir_vergisi_hesapla(vergi_matrahi: Decimal) -> Decimal:
     return Decimal(str(round(vergi, 2)))
 
 
+def ay_is_gunu(yil: int, ay: int) -> int:
+    """Ayın çalışılabilir gün sayısı: Pazar dışındaki her gün."""
+    import calendar
+
+    from routers.puantaj import hafta_tatili_mi
+
+    son = calendar.monthrange(yil, ay)[1]
+    return sum(1 for g in range(1, son + 1)
+               if not hafta_tatili_mi(date(yil, ay, g)))
+
+
 def bordro_hesapla(baz_maas: Decimal, fazla_mesai_saat: Decimal,
-                   prim: Decimal, diger: Decimal, calisilan_gun: int) -> dict:
-    gunluk = baz_maas / Decimal("22")
-    fiili_maas = gunluk * Decimal(str(calisilan_gun)) if calisilan_gun < 22 else baz_maas
-    saatlik = baz_maas / Decimal("176")   # 22 gün × 8 saat
-    fazla_ucr = saatlik * FAZLA_KATSAYI * fazla_mesai_saat
+                   prim: Decimal, diger: Decimal, calisilan_gun: int,
+                   ay_gunu: Optional[int] = None) -> dict:
+    # Ayı tam çalışan tam maaşını alır; eksik gün oranla düşülür.
+    bolen = Decimal(str(ay_gunu)) if ay_gunu else Decimal("26")
+    oran = min(Decimal(str(calisilan_gun)) / bolen, Decimal("1"))
+    fiili_maas = (baz_maas * oran).quantize(Decimal("0.01"))
+    fazla_ucr = Decimal("0")   # fazla mesai maaşa dahil
 
     brut = fiili_maas + fazla_ucr + prim + diger
     sgk  = (brut * SGK_ISCI).quantize(Decimal("0.01"))
@@ -100,7 +117,7 @@ class BordroOlustur(BaseModel):
     baz_maas: Decimal
     prim: Decimal = Decimal("0")
     diger_eklemeler: Decimal = Decimal("0")
-    calisilan_gun: int = 22
+    calisilan_gun: Optional[int] = None   # verilmezse ayın tamamı çalışılmış sayılır
     fazla_mesai_saat: Decimal = Decimal("0")
     notlar: Optional[str] = None
 
@@ -208,7 +225,10 @@ def bordro_olustur(
     if mevcut:
         raise HTTPException(status_code=400, detail="Bu döneme ait bordro zaten mevcut")
 
-    hesap = bordro_hesapla(veri.baz_maas, veri.fazla_mesai_saat, veri.prim, veri.diger_eklemeler, veri.calisilan_gun)
+    donem_gunu = ay_is_gunu(veri.yil, veri.ay)
+    calisilan_gun = veri.calisilan_gun if veri.calisilan_gun is not None else donem_gunu
+    hesap = bordro_hesapla(veri.baz_maas, veri.fazla_mesai_saat, veri.prim,
+                           veri.diger_eklemeler, calisilan_gun, donem_gunu)
     b = models.Bordro(
         personel_id=veri.personel_id, yil=veri.yil, ay=veri.ay,
         baz_maas=veri.baz_maas,
@@ -220,7 +240,7 @@ def bordro_olustur(
         gelir_vergisi=Decimal(str(hesap["gelir_vergisi"])),
         damga_vergisi=Decimal(str(hesap["damga_vergisi"])),
         net_maas=Decimal(str(hesap["net_maas"])),
-        calisilan_gun=veri.calisilan_gun,
+        calisilan_gun=calisilan_gun,
         fazla_mesai_saat=veri.fazla_mesai_saat,
         notlar=veri.notlar,
     )
@@ -234,10 +254,16 @@ def bordro_onizle(
     fazla_mesai_saat: Decimal = Query(default=0),
     prim: Decimal = Query(default=0),
     diger: Decimal = Query(default=0),
-    calisilan_gun: int = Query(default=22),
+    calisilan_gun: Optional[int] = Query(default=None),
+    yil: Optional[int] = Query(default=None),
+    ay: Optional[int] = Query(default=None, ge=1, le=12),
     _: models.Kullanici = Depends(aktif_kullanici),
 ):
-    return bordro_hesapla(baz_maas, fazla_mesai_saat, prim, diger, calisilan_gun)
+    bugun = date.today()
+    gunu = ay_is_gunu(yil or bugun.year, ay or bugun.month)
+    # Gün verilmediyse tam ay çalışıldığı varsayılır
+    return bordro_hesapla(baz_maas, fazla_mesai_saat, prim, diger,
+                          calisilan_gun if calisilan_gun is not None else gunu, gunu)
 
 
 @router.put("/{bid}")
@@ -257,7 +283,9 @@ def bordro_guncelle(
         setattr(b, alan, deger)
     # Yeniden hesapla
     if any(f in veri.model_dump(exclude_none=True) for f in ["prim","diger_eklemeler","calisilan_gun","fazla_mesai_saat"]):
-        hesap = bordro_hesapla(b.baz_maas, b.fazla_mesai_saat or 0, b.prim or 0, b.diger_eklemeler or 0, b.calisilan_gun or 22)
+        gunu = ay_is_gunu(b.yil, b.ay)
+        hesap = bordro_hesapla(b.baz_maas, b.fazla_mesai_saat or 0, b.prim or 0,
+                               b.diger_eklemeler or 0, b.calisilan_gun or gunu, gunu)
         for k, v in hesap.items():
             if hasattr(b, k) and k not in ["baz_maas"]:
                 setattr(b, k, Decimal(str(v)))

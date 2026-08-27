@@ -45,13 +45,13 @@ const BordroModul = (() => {
           <div style="font-size:12px;color:var(--gray-400)">${Ortak.kacir(b.personel_departman || '')}</div>
         </td>
         <td style="font-size:13px">${AYLAR[b.ay-1]} ${b.yil}</td>
-        <td style="font-size:13px">${tl(b.baz_maas)}</td>
-        <td style="font-size:13px;color:#00802F;font-weight:600">${tl(b.brut_maas)}</td>
+        <td class="sayi" style="font-size:13px">${b.calisilan_gun ?? '—'} gün</td>
+        <td class="sayi" style="font-size:13px;color:#00802F;font-weight:600">${tl(b.brut_maas)}</td>
         <td>
           <div style="font-size:12px;color:var(--gray-500)">SGK: ${tl(b.sgk_isci)}</div>
           <div style="font-size:12px;color:var(--gray-500)">GV: ${tl(b.gelir_vergisi)}</div>
         </td>
-        <td style="font-size:14px;font-weight:700;color:var(--primary)">${tl(b.net_maas)}</td>
+        <td class="sayi" style="font-size:14px;font-weight:700;color:var(--primary)">${tl(b.net_maas)}</td>
         <td>
           <span class="durum-badge" style="background:${DURUM_RENK[b.durum]}22;color:${DURUM_RENK[b.durum]}">${DURUM_ETIKET[b.durum]}</span>
         </td>
@@ -181,8 +181,8 @@ const BordroModul = (() => {
         <div class="panel" style="overflow:hidden">
           <table class="personel-tablo">
             <thead><tr>
-              <th>Personel</th><th>Dönem</th><th>Baz Maaş</th><th>Brüt</th>
-              <th>Kesintiler</th><th>Net Maaş</th><th>Durum</th><th>İşlem</th>
+              <th>Personel</th><th>Dönem</th><th class="sayi">Çalışılan</th><th class="sayi">Brüt</th>
+              <th>Kesintiler</th><th class="sayi">Net Maaş</th><th>Durum</th><th class="islem">İşlem</th>
             </tr></thead>
             <tbody id="bordro-tbody">
               <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
@@ -293,10 +293,13 @@ const BordroModul = (() => {
         const fm = parseFloat(document.querySelector('[name="fazla_mesai_saat"]')?.value) || 0;
         const prim = parseFloat(document.querySelector('[name="prim"]')?.value) || 0;
         const diger = parseFloat(document.querySelector('[name="diger_eklemeler"]')?.value) || 0;
-        const gun = parseInt(document.querySelector('[name="calisilan_gun"]')?.value) || 22;
+        const yil = parseInt(document.querySelector('[name="yil"]')?.value) || new Date().getFullYear();
+        const ay = parseInt(document.querySelector('[name="ay"]')?.value) || new Date().getMonth() + 1;
+        const ayGunu = ayIsGunu(yil, ay);
+        const gun = parseInt(document.querySelector('[name="calisilan_gun"]')?.value) || ayGunu;
 
-        const res = await apiFetch(`/bordro/hesapla?baz_maas=${maas}&fazla_mesai_saat=${fm}&prim=${prim}&diger=${diger}&calisilan_gun=${gun}`)
-          || _localHesapla(maas, fm, prim, diger, gun);
+        const res = await apiFetch(`/bordro/hesapla?baz_maas=${maas}&fazla_mesai_saat=${fm}&prim=${prim}&diger=${diger}&calisilan_gun=${gun}&yil=${yil}&ay=${ay}`)
+          || _localHesapla(maas, fm, prim, diger, gun, ayGunu);
 
         const panel = document.getElementById('bordro-onizle');
         const satirlar = document.getElementById('onizle-satirlar');
@@ -319,7 +322,6 @@ const BordroModul = (() => {
       document.getElementById('bordro-modal-icerik').innerHTML = `
         <div class="detay-grid">
           <div class="detay-satir"><span>Baz Maaş</span><strong>${tl(b.baz_maas)}</strong></div>
-          <div class="detay-satir"><span>Fazla Mesai Ücreti</span><strong>${tl(b.fazla_mesai_ucr)}</strong></div>
           <div class="detay-satir"><span>Prim</span><strong>${tl(b.prim)}</strong></div>
           <div class="detay-satir"><span>Diğer Eklemeler</span><strong>${tl(b.diger_eklemeler)}</strong></div>
           <div class="detay-satir" style="font-weight:700"><span>Brüt Maaş</span><strong style="color:#00802F">${tl(b.brut_maas)}</strong></div>
@@ -364,8 +366,18 @@ const BordroModul = (() => {
   };
 })();
 
-function _localHesapla(maas, fm, prim, diger, gun) {
-  const brut = maas * (gun / 22) + (maas / 176) * 1.5 * fm + prim + diger;
+// Backend'e ulaşılamadığında kullanılan yedek hesap; kuralı bordro.py ile
+// aynı tutmak zorunda: fazla mesai maaşa dahil, gün oranı ayın iş gününe göre.
+function ayIsGunu(yil, ay) {
+  const son = new Date(yil, ay, 0).getDate();
+  let gun = 0;
+  for (let g = 1; g <= son; g++) if (new Date(yil, ay - 1, g).getDay() !== 0) gun++;
+  return gun;
+}
+
+function _localHesapla(maas, fm, prim, diger, gun, ayGunu) {
+  const bolen = ayGunu || 26;
+  const brut = maas * Math.min(gun / bolen, 1) + prim + diger;
   const sgk = brut * 0.14;
   const isiz = brut * 0.01;
   const gv = (brut - sgk - isiz) * 0.15;

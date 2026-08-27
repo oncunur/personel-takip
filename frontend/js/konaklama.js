@@ -3,7 +3,7 @@ const KonaklamaModul = (() => {
   const O = Ortak;
   let sekme = 'konutlar';
   let konutlar = [], kayitlar = [], giderler = [], ozet = null;
-  let arama = '', filtreTur = '', filtreDurum = '', filtreOdeme = '';
+  let arama = '', filtreTur = '', filtreDurum = '', filtreOdeme = '', filtreKaynak = '';
 
   const TUR = {
     kiralik_daire: 'Kiralık Daire', lojman: 'Lojman', misafirhane: 'Misafirhane',
@@ -31,6 +31,9 @@ const KonaklamaModul = (() => {
     konutlar = kd.veriler; kayitlar = yd.veriler; giderler = gd.veriler; ozet = od;
   }
 
+  // Faturası gelmemiş otel konaklamalarının tahmini yükü
+  function otelBekleyen() { return otelOzeti ? otelOzeti.bekleyen_tutar : 0; }
+
   // ---- Render ----
   function render() {
     const y = O.yonetici();
@@ -40,7 +43,7 @@ const KonaklamaModul = (() => {
         { label: 'Konut', deger: ozet.konut_sayisi, alt: `${ozet.toplam_kapasite} yatak kapasitesi` },
         { label: 'Doluluk', deger: `%${ozet.doluluk_yuzde}`, alt: `${ozet.dolu_yatak} dolu / ${ozet.bos_yatak} boş`, renk: ozet.doluluk_yuzde >= 90 ? '#DB0000' : '#00802F' },
         { label: 'Aylık Kira', deger: O.tl(ozet.aylik_kira_toplam), alt: 'toplam yükümlülük', renk: '#006CE0' },
-        { label: 'Ödenmemiş Gider', deger: O.tl(ozet.odenmemis_gider_tutar), alt: `${ozet.odenmemis_gider_sayisi} kayıt`, renk: ozet.odenmemis_gider_sayisi ? '#855900' : '#00802F' },
+        { label: 'Ödenmemiş Gider', deger: O.tl(ozet.odenmemis_gider_tutar + otelBekleyen()), alt: `konut ${O.tl(ozet.odenmemis_gider_tutar)} · otel ${O.tl(otelBekleyen())}`, renk: (ozet.odenmemis_gider_sayisi || otelBekleyen()) ? '#855900' : '#00802F' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -53,11 +56,11 @@ const KonaklamaModul = (() => {
       </div>` : ''}
 
       ${O.sekmeler('knk-tabs', [
-        { key: 'konutlar', ad: 'Kiralık Evler', rozet: konutlar.filter(k => !k.kamp_mi).length },
+        { key: 'konutlar', ad: 'Kiralık Evler', rozet: konutlar.filter(k => !k.kamp_mi && !k.otel_mi).length },
         { key: 'kamplar', ad: 'Kamplar', rozet: konutlar.filter(k => k.kamp_mi).length },
         { key: 'oteller', ad: 'Otel', rozet: konutlar.filter(k => k.otel_mi).length },
         { key: 'sakinler', ad: 'Yerleşim', rozet: kayitlar.filter(k => k.aktif).length },
-        { key: 'giderler', ad: 'Giderler', rozet: giderler.length },
+        { key: 'giderler', ad: 'Giderler', rozet: giderler.length + (otelOzeti ? otelOzeti.toplam_kayit : 0) },
       ], sekme)}
 
       <div id="knk-govde"></div>
@@ -93,7 +96,7 @@ const KonaklamaModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Konut</th><th>Tür</th><th>Konum</th><th>Doluluk</th><th>Aylık Kira</th><th>Sözleşme</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Konut</th><th>Tür</th><th class="opsiyonel">Konum</th><th>Doluluk</th><th>Aylık Kira</th><th>Sözleşme</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(k => `
             <tr>
               <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}${k.oda_sayisi ? ' · ' + O.kacir(k.oda_sayisi) : ''}</span></td>
@@ -164,7 +167,7 @@ const KonaklamaModul = (() => {
 
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Kamp</th><th>Ödeme</th><th>Konum</th><th>Doluluk</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Kamp</th><th>Ödeme</th><th class="opsiyonel">Konum</th><th>Doluluk</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(k => `
             <tr>
               <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}</span></td>
@@ -230,7 +233,7 @@ const KonaklamaModul = (() => {
 
       <div class="panel" style="overflow-x:auto;margin-bottom:var(--sp-m)">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Otel</th><th>Konum</th><th>Doluluk</th><th>Gecelik</th><th>Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Otel</th><th class="opsiyonel">Konum</th><th>Doluluk</th><th>Gecelik</th><th>Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(k => `
             <tr>
               <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}</span></td>
@@ -256,48 +259,80 @@ const KonaklamaModul = (() => {
 
   // Kişi bazlı konaklama dökümü: kim, hangi oda, kaç gece, ne kadar.
   // Fatura kesilmemiş kayıtlarda gecelik ücretten tahmin gösterilir.
+  const UZUN_KONAKLAMA = 30;   // bu geceden fazlası kalıcı konaklama gerektirir
+
   function otelDokumu(y) {
     if (!otelOzeti || !otelOzeti.veriler.length) return '';
     const o = otelOzeti;
-    const tl = v => O.tl(v);
 
     return `
-      <div class="panel" style="overflow-x:auto">
-        <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between">
-          <span>Konaklama Dökümü</span>
-          <span style="font-size:12px;font-weight:400;color:var(--text-2)">
-            ${o.toplam_kayit} kayıt · ${o.toplam_gece} gece ·
-            faturalanan ${tl(o.faturalanan_tutar)} ·
-            <strong style="color:var(--warning)">bekleyen ${tl(o.bekleyen_tutar)}</strong>
-          </span>
+      <div class="panel otel-dokum">
+        <div class="pano-container-bas">
+          <h3>Konaklama Dökümü</h3>
+          <p>${o.toplam_kayit} kayıt · ${o.toplam_gece} gece ·
+             faturalanan ${O.tl(o.faturalanan_tutar)} ·
+             bekleyen ${O.tl(o.bekleyen_tutar)}</p>
         </div>
-        <table class="personel-tablo idari-tablo">
-          <thead><tr>
-            <th>Personel</th><th>Otel</th><th>Oda</th><th>Giriş</th><th>Çıkış</th>
-            <th>Gece</th><th>Gecelik</th><th>Tutar</th><th>Fatura</th><th>İşlem</th>
-          </tr></thead>
-          <tbody>${o.veriler.map(k => `
-            <tr${k.faturalandi ? '' : ' style="background:var(--warning-bg)"'}>
-              <td><strong>${O.kacir(k.personel_ad || '—')}</strong>
-                  ${k.pansiyon ? `<span class="hucre-alt">${O.kacir(k.pansiyon)}</span>` : ''}</td>
-              <td>${O.kacir(k.konut_ad || '—')}<span class="hucre-alt">${O.kacir(k.konut_kod || '')}</span></td>
-              <td>${O.kacir(k.oda_no || '—')}</td>
-              <td>${O.tarih(k.giris_tarihi)}</td>
-              <td>${k.cikis_tarihi ? O.tarih(k.cikis_tarihi) : '<span style="color:var(--primary)">devam ediyor</span>'}</td>
-              <td><strong>${k.gece_sayisi}</strong></td>
-              <td>${tl(k.gecelik_ucret)}</td>
-              <td><strong>${tl(k.tutar)}</strong>
-                  <span class="hucre-alt">net ${tl(k.net_tutar)}</span></td>
-              <td>${k.faturalandi
-                    ? `${O.rozet(O.kacir(k.fatura_no), '#00802F')}<span class="hucre-alt">${O.tarih(k.fatura_tarihi)}</span>`
-                    : O.rozet('bekliyor', '#855900')}</td>
-              <td class="islem-td">
-                ${y && !k.faturalandi ? `<button class="btn-mini" onclick="KonaklamaModul.faturaAc(${k.id})">Fatura işle</button>` : ''}
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
+        <div style="overflow-x:auto">
+          <table class="personel-tablo idari-tablo dokum-tablo">
+            <thead><tr>
+              <th>Personel</th>
+              <th>Konaklama</th>
+              <th class="sayi">Gece</th>
+              <th class="sayi">Gecelik</th>
+              <th class="sayi">Tutar</th>
+              <th>Fatura</th>
+              <th class="islem">İşlem</th>
+            </tr></thead>
+            <tbody>${o.veriler.map(k => dokumSatiri(k, y)).join('')}</tbody>
+          </table>
+        </div>
       </div>`;
+  }
+
+  function dokumSatiri(k, y) {
+    const uzun = k.gece_sayisi > UZUN_KONAKLAMA;
+    const devam = !k.cikis_tarihi;
+
+    // Otel, oda ve pansiyon tek satırda; tarih aralığı altına iner.
+    // Pansiyon kişiye değil konaklamaya ait olduğu için ad sütununda durmuyor.
+    const yer = [
+      O.kacir(k.konut_ad || '—'),
+      k.oda_no ? `Oda ${O.kacir(k.oda_no)}` : '',
+      k.pansiyon ? O.kacir(k.pansiyon) : ''
+    ].filter(Boolean).join(' · ');
+    const aralik = devam
+      ? `${O.tarih(k.giris_tarihi)} — devam ediyor`
+      : `${O.tarih(k.giris_tarihi)} — ${O.tarih(k.cikis_tarihi)}`;
+
+    return `
+      <tr>
+        <td>
+          <strong>${O.kacir(k.personel_ad || '—')}</strong>
+        </td>
+        <td>
+          ${yer}
+          <span class="hucre-alt">${aralik}</span>
+        </td>
+        <td class="sayi">
+          <strong${uzun ? ' class="uyari-sayi"' : ''}>${k.gece_sayisi}</strong>
+        </td>
+        <td class="sayi">${O.tl(k.gecelik_ucret)}</td>
+        <td class="sayi" title="Net ${O.tl(k.net_tutar)} · KDV ${O.tl(k.kdv)} · Konaklama vergisi ${O.tl(k.konaklama_vergisi)}">
+          <strong>${O.tl(k.tutar)}</strong>
+        </td>
+        <td>
+          ${k.faturalandi
+            ? `<span class="fatura-no">${O.kacir(k.fatura_no)}</span>
+               <span class="hucre-alt">${O.tarih(k.fatura_tarihi)}</span>`
+            : O.rozet('bekliyor', '#855900')}
+        </td>
+        <td class="islem">
+          ${y && !k.faturalandi
+            ? `<button class="btn-mini" onclick="KonaklamaModul.faturaAc(${k.id})">Fatura işle</button>`
+            : ''}
+        </td>
+      </tr>`;
   }
 
   function sakinlerGovde(y) {
@@ -330,38 +365,120 @@ const KonaklamaModul = (() => {
       </div>`;
   }
 
+  // Otel konaklamaları da şirketin gider yükü; tek listede birleşiyorlar.
+  // Konut gideri ay bazlı bir kayıt, otel gideri kişi bazlı bir konaklama —
+  // ortak alanlara (yer / tür / dönem / tutar / durum) indirgeniyorlar.
+  function otelGiderleri() {
+    if (!otelOzeti) return [];
+    return otelOzeti.veriler.map(k => ({
+      kaynak: 'otel',
+      id: k.id,
+      yer: k.konut_ad || '—',
+      alt: [k.personel_ad, k.oda_no ? `Oda ${k.oda_no}` : ''].filter(Boolean).join(' · '),
+      tur: `Otel · ${k.gece_sayisi} gece`,
+      donem: donemAraligi(k.giris_tarihi, k.cikis_tarihi),
+      sira: k.giris_tarihi || '',
+      tutar: k.tutar,
+      odendi: k.faturalandi,
+      durum: k.faturalandi
+        ? O.rozet('Faturalandı', '#00802F')
+        : O.rozet('Tahmini', '#006CE0'),
+    }));
+  }
+
+  function konutGiderleri() {
+    return giderler.map(g => ({
+      kaynak: 'konut',
+      id: g.id,
+      yer: g.konut_ad || '—',
+      alt: [g.konut_kod, g.aciklama].filter(Boolean).join(' · '),
+      tur: GIDER_TUR[g.tur] || g.tur,
+      donem: `${String(g.ay).padStart(2, '0')}/${g.yil}`,
+      sira: `${g.yil}-${String(g.ay).padStart(2, '0')}-01`,
+      tutar: g.tutar,
+      odendi: g.odendi,
+      durum: g.odendi
+        ? O.rozet('Ödendi ' + O.tarih(g.odeme_tarihi), '#00802F')
+        : O.rozet('Bekliyor', '#855900'),
+    }));
+  }
+
+  // Otel konaklaması iki aya taşabildiği için dönem tek ay olmayabilir
+  function donemAraligi(giris, cikis) {
+    const ay = t => t ? `${t.slice(5, 7)}/${t.slice(0, 4)}` : '';
+    const b = ay(giris);
+    const e = cikis ? ay(cikis) : '';
+    if (!e) return `${b} —`;
+    return b === e ? b : `${b} — ${e}`;
+  }
+
   function giderlerGovde(y) {
-    const toplam = giderler.reduce((t, g) => t + Number(g.tutar), 0);
-    const odenmemis = giderler.filter(g => !g.odendi).reduce((t, g) => t + Number(g.tutar), 0);
+    const hepsi = [...konutGiderleri(), ...otelGiderleri()]
+      .sort((a, b) => b.sira.localeCompare(a.sira));
+    const liste = filtreKaynak ? hepsi.filter(g => g.kaynak === filtreKaynak) : hepsi;
+
+    const topla = (dizi, kosul = () => true) =>
+      dizi.filter(kosul).reduce((t, g) => t + Number(g.tutar), 0);
+    const konutT = topla(hepsi, g => g.kaynak === 'konut');
+    const otelT = topla(hepsi, g => g.kaynak === 'otel');
+    const bekleyen = topla(hepsi, g => !g.odendi);
+
     document.getElementById('knk-govde').innerHTML = `
       <div class="personel-toolbar">
-        <div class="arama-grup"><span style="font-size:13px;color:var(--gray-500)">
-          Toplam <strong style="color:var(--gray-800)">${O.tl(toplam)}</strong> · Ödenmemiş <strong style="color:var(--warning)">${O.tl(odenmemis)}</strong>
-        </span></div>
+        <div class="arama-grup">
+          <select id="knk-gider-kaynak" class="filtre-select">
+            <option value="">Tüm Giderler (${hepsi.length})</option>
+            <option value="konut" ${filtreKaynak === 'konut' ? 'selected' : ''}>Konut Giderleri (${hepsi.filter(g => g.kaynak === 'konut').length})</option>
+            <option value="otel" ${filtreKaynak === 'otel' ? 'selected' : ''}>Otel Konaklama (${hepsi.filter(g => g.kaynak === 'otel').length})</option>
+          </select>
+        </div>
         <div class="toolbar-sagda">
           ${y ? `<button class="btn-yeni" onclick="KonaklamaModul.yeniGider()">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
             Gider Ekle</button>` : ''}
         </div>
       </div>
+
+      <div class="gider-ozet">
+        <span>Konut gideri <strong>${O.tl(konutT)}</strong></span>
+        <span>Otel konaklama <strong>${O.tl(otelT)}</strong></span>
+        <span class="gider-ozet-toplam">Toplam <strong>${O.tl(konutT + otelT)}</strong></span>
+        <span>Ödenmemiş / faturasız <strong class="uyari-sayi">${O.tl(bekleyen)}</strong></span>
+      </div>
+
       <div class="panel" style="overflow-x:auto">
-        <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Konut</th><th>Gider Türü</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlemler</th></tr></thead>
-          <tbody>${giderler.length ? giderler.map(g => `
+        <table class="personel-tablo idari-tablo gider-tablo">
+          <thead><tr><th>Yer</th><th>Gider Türü</th><th>Dönem</th><th class="sayi">Tutar</th><th>Durum</th><th class="islem">İşlemler</th></tr></thead>
+          <tbody>${liste.length ? liste.map(g => `
             <tr>
-              <td><strong>${O.kacir(g.konut_ad || '—')}</strong></td>
-              <td>${GIDER_TUR[g.tur] || g.tur}</td>
-              <td>${String(g.ay).padStart(2, '0')}/${g.yil}</td>
-              <td><strong>${O.tlTam(g.tutar)}</strong></td>
-              <td>${g.odendi ? O.rozet('Ödendi ' + O.tarih(g.odeme_tarihi), '#00802F') : O.rozet('Bekliyor', '#855900')}</td>
-              <td class="islem-td">
-                ${y && !g.odendi ? `<button class="btn-mini onay" onclick="KonaklamaModul.giderOde(${g.id})">Ödendi İşaretle</button>` : ''}
-                ${y ? `<button class="btn-ikon btn-sil" title="Sil" onclick="KonaklamaModul.giderSil(${g.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button>` : ''}
+              <td>
+                <strong>${O.kacir(g.yer)}</strong>
+                ${g.alt ? `<span class="hucre-alt">${O.kacir(g.alt)}</span>` : ''}
+              </td>
+              <td>${O.kacir(g.tur)}</td>
+              <td>${g.donem}</td>
+              <td class="sayi"><strong>${O.tlTam(g.tutar)}</strong></td>
+              <td>${g.durum}</td>
+              <td class="islem">
+                <div class="islem-grup">${giderIslem(g, y)}</div>
               </td>
             </tr>`).join('') : O.bosSatir('Gider kaydı yok', 6)}
           </tbody>
         </table>
       </div>`;
+
+    const sec = document.getElementById('knk-gider-kaynak');
+    if (sec) sec.onchange = () => { filtreKaynak = sec.value; giderlerGovde(y); };
+  }
+
+  function giderIslem(g, y) {
+    if (!y) return '';
+    if (g.kaynak === 'otel') {
+      return g.odendi ? '' : `<button class="btn-mini" onclick="KonaklamaModul.faturaAc(${g.id})">Fatura işle</button>`;
+    }
+    return `
+      ${!g.odendi ? `<button class="btn-mini onay" onclick="KonaklamaModul.giderOde(${g.id})">Ödendi İşaretle</button>` : ''}
+      <button class="btn-ikon btn-sil" title="Sil" onclick="KonaklamaModul.giderSil(${g.id})"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button>`;
   }
 
   async function yenile() { await veriYukle(); render(); }

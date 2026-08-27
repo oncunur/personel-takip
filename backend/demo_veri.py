@@ -84,16 +84,39 @@ def olustur(db):
     kullanilan_eposta = set()
 
     def eposta(ad, soyad, i):
-        temiz = (ad + "." + soyad).lower()
-        for a, b in [("ı", "i"), ("ş", "s"), ("ğ", "g"), ("ü", "u"), ("ö", "o"), ("ç", "c")]:
+        # "İ".lower() birleşik noktalı "i̇" üretiyor; büyük harfler
+        # küçültülmeden önce sadeleştiriliyor, sonra ASCII dışı ne
+        # kaldıysa atılıyor.
+        temiz = ad + "." + soyad
+        for a, b in [("İ", "i"), ("I", "i"), ("Ş", "s"), ("Ğ", "g"),
+                     ("Ü", "u"), ("Ö", "o"), ("Ç", "c"),
+                     ("ı", "i"), ("ş", "s"), ("ğ", "g"),
+                     ("ü", "u"), ("ö", "o"), ("ç", "c")]:
             temiz = temiz.replace(a, b)
-        e = f"{temiz}{i}@demo.local"
-        return e
+        temiz = "".join(k for k in temiz.lower() if k.isascii() and (k.isalpha() or k == "."))
+        return f"{temiz}{i}@demo.local"
+
+    kullanilan_isim = set()
+
+    def benzersiz_isim(adlar, soyadlar):
+        """Aynı ad-soyad ikilisini iki kez üretmez.
+
+        Havuz tükenirse soyada sıra eki gelir; listede aynı isimden iki
+        kişi görünmesi gerçek personelle karıştırılmaya yol açıyordu.
+        """
+        for _ in range(200):
+            ad, soyad = random.choice(adlar), random.choice(soyadlar)
+            if (ad, soyad) not in kullanilan_isim:
+                kullanilan_isim.add((ad, soyad))
+                return ad, soyad
+        ad, soyad = random.choice(adlar), random.choice(soyadlar)
+        soyad = f"{soyad} {len(kullanilan_isim) + 1}"
+        kullanilan_isim.add((ad, soyad))
+        return ad, soyad
 
     # ── 10 beyaz yaka: Türk vatandaşı, kiralık ev / otel ──
     for i, (pozisyon, dep_ad) in enumerate(BEYAZ_POZISYON, start=1):
-        ad = random.choice(TURK_AD)
-        soyad = random.choice(TURK_SOYAD)
+        ad, soyad = benzersiz_isim(TURK_AD, TURK_SOYAD)
         dep = departman_bul(db, dep_ad)
         kisiler.append(models.Personel(
             ad=ad, soyad=soyad, email=eposta(ad, soyad, i),
@@ -113,11 +136,11 @@ def olustur(db):
 
     for i, uyruk in enumerate(uyruklar, start=11):
         if uyruk == "TR":
-            ad, soyad = random.choice(TURK_AD), random.choice(TURK_SOYAD)
+            ad, soyad = benzersiz_isim(TURK_AD, TURK_SOYAD)
             kimlik = {"tc_kimlik": None}
         else:
             adlar, soyadlar = YABANCI[uyruk]
-            ad, soyad = random.choice(adlar), random.choice(soyadlar)
+            ad, soyad = benzersiz_isim(adlar, soyadlar)
             # YKN: 99 ile başlayan 11 hane
             kimlik = {"yabanci_kimlik_no": f"99{random.randint(10**8, 10**9 - 1)}"}
 

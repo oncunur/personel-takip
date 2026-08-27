@@ -60,7 +60,7 @@ const DemirbasModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Demirbaş</th><th>Kategori</th><th>Marka / Model</th><th>Bedel</th><th>Zimmetli</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Demirbaş</th><th>Kategori</th><th class="opsiyonel">Marka / Model</th><th>Bedel</th><th>Zimmetli</th><th class="opsiyonel">Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(d => `
             <tr>
               <td><strong>${O.kacir(d.ad)}</strong><span class="hucre-alt">${O.kacir(d.kod)}${d.seri_no ? ' · ' + O.kacir(d.seri_no) : ''}</span></td>

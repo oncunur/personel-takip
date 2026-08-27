@@ -83,3 +83,20 @@ def aylik_izin_trend(yil: Optional[int] = Query(None), db: Session = Depends(get
 def personel_durum(db: Session = Depends(get_db), _: models.Kullanici = Depends(aktif_kullanici)):
     sonuc = db.query(models.Personel.durum, func.count(models.Personel.id)).group_by(models.Personel.durum).all()
     return [{"durum": r[0], "sayi": r[1]} for r in sonuc]
+
+
+@router.get("/yaka-dagilim")
+def yaka_dagilim(db: Session = Depends(get_db), _: models.Kullanici = Depends(aktif_kullanici)):
+    """Aktif personelin yaka kırılımı.
+
+    Durum dağılımı grafiği neredeyse her zaman tek dilim (hepsi aktif)
+    çıkıyordu; beyaz/mavi yaka ayrımı hem konaklama hem bordro tarafında
+    karşılığı olan gerçek bir kırılım.
+    """
+    sonuc = (db.query(models.Personel.yaka, func.count(models.Personel.id))
+             .filter(models.Personel.durum == models.PersonelDurum.aktif)
+             .group_by(models.Personel.yaka).all())
+    etiket = {models.Yaka.beyaz: "Beyaz yaka", models.Yaka.mavi: "Mavi yaka"}
+    return [{"yaka": r[0].value if r[0] else None,
+             "etiket": etiket.get(r[0], "Belirtilmemiş"),
+             "sayi": r[1]} for r in sonuc]

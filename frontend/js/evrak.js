@@ -24,7 +24,6 @@ const EvrakModul = (() => {
         { label: 'Gelen Evrak', deger: ozet.gelen, alt: 'bu yıl' },
         { label: 'Giden Evrak', deger: ozet.giden, alt: 'bu yıl', renk: '#006CE0' },
         { label: 'Aktif Sözleşme', deger: ozet.aktif_sozlesme, alt: O.tl(ozet.sozlesme_bedel_toplam) + ' toplam bedel', renk: '#00802F' },
-        { label: 'Bitiş Uyarısı', deger: uyarilar.length, alt: 'yenileme gerekebilir', renk: uyarilar.length ? '#DB0000' : '#00802F' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -71,7 +70,7 @@ const EvrakModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Evrak No</th><th>Yön</th><th>Tarih</th><th>Konu</th><th>Kurum / Kişi</th><th>Kategori</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Evrak No</th><th>Yön</th><th>Tarih</th><th>Konu</th><th>Kurum / Kişi</th><th class="opsiyonel">Kategori</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(e => `
             <tr>
               <td><strong style="font-variant-numeric:tabular-nums">${O.kacir(e.evrak_no)}</strong></td>
@@ -116,7 +115,7 @@ const EvrakModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Sözleşme</th><th>Tür</th><th>Dönem</th><th>Kalan</th><th>Bedel</th><th>Sorumlu</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Sözleşme</th><th>Tür</th><th>Dönem</th><th>Kalan</th><th>Bedel</th><th class="opsiyonel">Sorumlu</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(s => `
             <tr ${s.uyari && s.durum === 'aktif' ? 'style="background:#FFFEF0"' : ''}>
               <td><strong>${O.kacir(s.baslik)}</strong><span class="hucre-alt">${O.kacir(s.karsi_taraf || '')}</span></td>

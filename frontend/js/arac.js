@@ -27,7 +27,6 @@ const AracModul = (() => {
         { label: 'Araç', deger: ozet.arac_sayisi, alt: `${ozet.atanan} atanmış · ${ozet.bosta} boşta` },
         { label: 'Bakımda', deger: ozet.bakimda, alt: 'serviste', renk: ozet.bakimda ? '#855900' : '#00802F' },
         { label: 'Yıllık Gider', deger: O.tl(ozet.yillik_gider), alt: 'yakıt, bakım, ceza dahil', renk: '#006CE0' },
-        { label: 'Evrak Uyarısı', deger: uyarilar.length, alt: '30 gün içinde dolan', renk: uyarilar.length ? '#DB0000' : '#00802F' },
       ])}
 
       ${uyarilar.length ? `<div class="panel uyari-panel">
@@ -71,7 +70,7 @@ const AracModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Plaka</th><th>Araç</th><th>KM</th><th>Sürücü</th><th>Muayene</th><th>Sigorta</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Plaka</th><th>Araç</th><th class="opsiyonel">KM</th><th>Sürücü</th><th>Muayene</th><th>Sigorta</th><th class="opsiyonel">Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(a => `
             <tr>
               <td><strong style="letter-spacing:.03em">${O.kacir(a.plaka)}</strong><span class="hucre-alt">${YAKIT[a.yakit_tur] || ''}</span></td>

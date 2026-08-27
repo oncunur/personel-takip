@@ -28,53 +28,36 @@ const RaporModul = (() => {
     return res.json();
   }
 
+  const YAKA_RENK = { beyaz: '#006CE0', mavi: '#855900' };
+
+  // Tek kategorili donut anlamsız duruyordu; veri yoksa grafik yerine not
+  function bosGrafik(id, mesaj) {
+    const c = document.getElementById(id);
+    if (c) c.parentElement.innerHTML =
+      `<div class="grafik-bos">${Ortak.kacir(mesaj)}</div>`;
+  }
+
   function grafikleriTemizle() {
     [grafik1, grafik2, grafik3, grafik4].forEach(g => g && g.destroy());
     grafik1 = grafik2 = grafik3 = grafik4 = null;
   }
 
   function genelKartlarRender(genel) {
-    document.getElementById('rapor-kartlar').innerHTML = `
-      <div class="rapor-kart" style="border-top:3px solid var(--primary)">
-        <div class="rapor-kart-ikon" style="background:var(--primary-light)">
-          <svg viewBox="0 0 20 20" fill="#006CE0"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
-        </div>
-        <div class="rapor-kart-bilgi">
-          <span class="rapor-kart-sayi">${genel.toplam_personel}</span>
-          <span class="rapor-kart-label">Toplam Personel</span>
-        </div>
-      </div>
-      <div class="rapor-kart" style="border-top:3px solid #00802F">
-        <div class="rapor-kart-ikon" style="background:#EFFFF1">
-          <svg viewBox="0 0 20 20" fill="#00802F"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        </div>
-        <div class="rapor-kart-bilgi">
-          <span class="rapor-kart-sayi">${genel.aktif_personel}</span>
-          <span class="rapor-kart-label">Aktif Personel</span>
-        </div>
-      </div>
-      <div class="rapor-kart" style="border-top:3px solid #855900">
-        <div class="rapor-kart-ikon" style="background:#FFFEF0">
-          <svg viewBox="0 0 20 20" fill="#855900"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
-        </div>
-        <div class="rapor-kart-bilgi">
-          <span class="rapor-kart-sayi">${genel.bekleyen_izin}</span>
-          <span class="rapor-kart-label">Bekleyen İzin</span>
-        </div>
-      </div>
-      <div class="rapor-kart" style="border-top:3px solid #006CE0">
-        <div class="rapor-kart-ikon" style="background:#F5F3FF">
-          <svg viewBox="0 0 20 20" fill="#006CE0"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-        </div>
-        <div class="rapor-kart-bilgi">
-          <span class="rapor-kart-sayi">${genel.bu_ay_izin}</span>
-          <span class="rapor-kart-label">Bu Ay Onaylanan İzin</span>
-        </div>
-      </div>
-    `;
+    // Toplam ve aktif personel çoğu zaman aynı sayı; ikisini ayrı kart
+    // yapmak yerine pasifi aktif kartının alt bilgisi olarak veriyoruz.
+    const pasif = genel.toplam_personel - genel.aktif_personel;
+    document.getElementById('rapor-kartlar').innerHTML = Ortak.statGrid([
+      { label: 'Aktif Personel', deger: genel.aktif_personel,
+        alt: pasif ? `${pasif} pasif · ${genel.toplam_personel} toplam` : 'tamamı aktif',
+        renk: '#00802F' },
+      { label: 'Bekleyen İzin', deger: genel.bekleyen_izin,
+        alt: genel.bekleyen_izin ? 'onay bekliyor' : 'bekleyen yok',
+        renk: genel.bekleyen_izin ? '#855900' : '#8C8C94' },
+      { label: 'Bu Ay Onaylanan İzin', deger: genel.bu_ay_izin, alt: 'izin talebi', renk: '#006CE0' },
+    ]);
   }
 
-  function grafiklerRender(dep, turDagilim, trend, durumDagilim) {
+  function grafiklerRender(dep, turDagilim, trend, yakaDagilim) {
     // 1) Departman dağılımı — yatay bar
     grafik1 = new Chart(document.getElementById('g-departman'), {
       type: 'bar',
@@ -87,22 +70,28 @@ const RaporModul = (() => {
         scales:{ x:{ beginAtZero:true, ticks:{stepSize:1} } } },
     });
 
-    // 2) Personel durum dağılımı — doughnut
-    const aktifDurum = durumDagilim.filter(d => d.sayi > 0);
-    grafik2 = new Chart(document.getElementById('g-durum'), {
-      type: 'doughnut',
-      data: {
-        labels: aktifDurum.map(d => DURUM_ETIKET[d.durum] || d.durum),
-        datasets: [{ data: aktifDurum.map(d => d.sayi),
-          backgroundColor: aktifDurum.map(d => DURUM_RENK[d.durum] || '#8C8C94'),
-          borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }],
-      },
-      options: { responsive:true, cutout:'65%',
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, padding:16 } } } },
-    });
+    // 2) Yaka dağılımı — doughnut. Durum dağılımı neredeyse hep tek dilim
+    // (%100 aktif) çıkıyordu; beyaz/mavi ayrımı gerçek bir kırılım.
+    const yakalar = (yakaDagilim || []).filter(d => d.sayi > 0);
+    if (yakalar.length) {
+      grafik2 = new Chart(document.getElementById('g-durum'), {
+        type: 'doughnut',
+        data: {
+          labels: yakalar.map(d => d.etiket),
+          datasets: [{ data: yakalar.map(d => d.sayi),
+            backgroundColor: yakalar.map(d => YAKA_RENK[d.yaka] || '#8C8C94'),
+            borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }],
+        },
+        options: { responsive:true, cutout:'65%',
+          plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, padding:16 } } } },
+      });
+    } else {
+      bosGrafik('g-durum', 'Yaka bilgisi girilmemiş');
+    }
 
     // 3) İzin türü dağılımı — doughnut
-    grafik3 = new Chart(document.getElementById('g-izintur'), {
+    if (!turDagilim.length) { bosGrafik('g-izintur', 'Onaylanmış izin yok'); }
+    else grafik3 = new Chart(document.getElementById('g-izintur'), {
       type: 'doughnut',
       data: {
         labels: turDagilim.map(t => TUR_ETIKET[t.tur] || t.tur),
@@ -165,7 +154,7 @@ const RaporModul = (() => {
         </div>
 
         <!-- Genel kartlar -->
-        <div class="rapor-kartlar-grid" id="rapor-kartlar">
+        <div id="rapor-kartlar">
           <div style="padding:40px;text-align:center;color:var(--gray-400)">Yükleniyor...</div>
         </div>
 
@@ -176,7 +165,7 @@ const RaporModul = (() => {
             <div class="grafik-alan"><canvas id="g-departman"></canvas></div>
           </div>
           <div class="panel grafik-panel">
-            <div class="panel-header">Personel Durum Dağılımı</div>
+            <div class="panel-header">Yaka Dağılımı</div>
             <div class="grafik-alan"><canvas id="g-durum"></canvas></div>
           </div>
         </div>
@@ -195,21 +184,16 @@ const RaporModul = (() => {
       `;
 
       // Paralel API çağrıları
-      const [genel, dep, turDagilim, trend, durumDagilim] = await Promise.all([
+      const [genel, dep, turDagilim, trend, yakaDagilim] = await Promise.all([
         apiFetch('/rapor/genel'),
         apiFetch('/rapor/departman-dagilim'),
         apiFetch('/rapor/izin-tur-dagilim'),
         apiFetch('/rapor/aylik-izin-trend'),
-        apiFetch('/rapor/personel-durum'),
+        apiFetch('/rapor/yaka-dagilim'),
       ]);
 
       genelKartlarRender(genel);
-      grafiklerRender(
-        dep       ,
-        turDagilim,
-        trend     ,
-        durumDagilim,
-      );
+      grafiklerRender(dep, turDagilim, trend, yakaDagilim);
     },
 
     async exportPersonel() {

@@ -54,29 +54,20 @@ const IzinModul = (() => {
       (!filtreTur   || t.tur   === filtreTur)
     );
 
-    document.getElementById('izin-stats').innerHTML = `
-      <div class="izin-stat-kart" style="border-left:3px solid ${DURUM_RENK.beklemede}">
-        <span class="stat-sayi">${istat.beklemede}</span>
-        <span class="stat-label">Beklemede</span>
-      </div>
-      <div class="izin-stat-kart" style="border-left:3px solid ${DURUM_RENK.onaylandi}">
-        <span class="stat-sayi">${istat.onaylandi}</span>
-        <span class="stat-label">Onaylanan</span>
-      </div>
-      <div class="izin-stat-kart" style="border-left:3px solid ${DURUM_RENK.reddedildi}">
-        <span class="stat-sayi">${istat.reddedildi}</span>
-        <span class="stat-label">Reddedilen</span>
-      </div>
-      <div class="izin-stat-kart" style="border-left:3px solid var(--primary)">
-        <span class="stat-sayi">${istat.toplamGun}</span>
-        <span class="stat-label">Toplam Gün (Onaylı)</span>
-      </div>
-      ${bakiye ? `
-      <div class="izin-stat-kart" style="border-left:3px solid #006CE0; grid-column: span 1;">
-        <span class="stat-sayi">${bakiye.kalan}<small style="font-size:13px;color:var(--gray-400)">/${bakiye.hak}</small></span>
-        <span class="stat-label">Yıllık Bakiye (Kalan/Hak)</span>
-      </div>` : ''}
-    `;
+    // Diğer sayfalarla aynı kart bileşeni; izne özel bir stil taşımıyor
+    const kartlar = [
+      { label: 'Beklemede', deger: istat.beklemede, alt: istat.beklemede ? 'onay bekliyor' : 'bekleyen yok',
+        renk: istat.beklemede ? DURUM_RENK.beklemede : DURUM_RENK.iptal },
+      { label: 'Onaylanan', deger: istat.onaylandi, alt: `${istat.toplamGun} gün toplam`, renk: DURUM_RENK.onaylandi },
+      { label: 'Reddedilen', deger: istat.reddedildi, alt: 'bu yıl', renk: istat.reddedildi ? DURUM_RENK.reddedildi : DURUM_RENK.iptal },
+    ];
+    // Bakiye yalnızca personel kaydı olan kullanıcıda anlamlı; yöneticide
+    // backend null döndüğü için kart hiç basılmıyor.
+    if (bakiye && bakiye.hak != null) {
+      kartlar.push({ label: 'Yıllık İzin Bakiyesi', deger: `${bakiye.kalan}`,
+                     alt: `${bakiye.hak} günün ${bakiye.kullanilan} günü kullanıldı`, renk: '#006CE0' });
+    }
+    document.getElementById('izin-stats').innerHTML = Ortak.statGrid(kartlar);
 
     const tbody = document.getElementById('izin-tbody');
     if (!filtreli.length) {
@@ -151,7 +142,7 @@ const IzinModul = (() => {
         </button>
       </div>
 
-      <div class="izin-stats-wrap" id="izin-stats"></div>
+      <div id="izin-stats"></div>
 
       <div class="panel" style="overflow:hidden;margin-top:16px">
         <table class="personel-tablo">

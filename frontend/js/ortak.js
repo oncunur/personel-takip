@@ -160,9 +160,55 @@ const Ortak = (() => {
     document.getElementById('content-area').innerHTML = html;
   }
 
+  // ── Dar ekranda gizlenecek sütunlar ────────────────────────────
+  // Başlıkta .opsiyonel işaretli sütunun gövde hücrelerine de aynı
+  // sınıf veriliyor; yoksa yalnızca başlık gizlenir ve sütunlar kayar.
+  // Modüller tabloyu kendi içinde çizdiği için tek tek çağırmak yerine
+  // içerik alanı değiştikçe merkezî olarak uygulanıyor.
+  function opsiyonelSutunlariEsle(kok) {
+    (kok || document).querySelectorAll('table').forEach(tablo => {
+      const basliklar = [...tablo.querySelectorAll('thead tr:last-child th')];
+      const gizli = basliklar
+        .map((th, i) => th.classList.contains('opsiyonel') ? i : -1)
+        .filter(i => i >= 0);
+      if (!gizli.length) return;
+      tablo.querySelectorAll('tbody tr').forEach(satir => {
+        // colspan'lı boş/toplam satırları atla
+        if (satir.cells.length !== basliklar.length) return;
+        gizli.forEach(i => satir.cells[i].classList.add('opsiyonel'));
+      });
+    });
+  }
+
+  // Gövdedeki işlem hücresinin başlığını da işaretle. Modüllerin bir kısmı
+  // .islem-td, bir kısmı .islem kullanıyor; başlık ikisinde de sınıfsızdı
+  // ve "İşlemler" metni sütunu ikonlardan geniş tutuyordu.
+  function islemBasligiEsle(kok) {
+    (kok || document).querySelectorAll('table').forEach(tablo => {
+      const basliklar = [...tablo.querySelectorAll('thead tr:last-child th')];
+      const ornek = tablo.querySelector('tbody tr');
+      if (!ornek || ornek.cells.length !== basliklar.length) return;
+      [...ornek.cells].forEach((hucre, i) => {
+        if (hucre.classList.contains('islem-td') || hucre.classList.contains('islem')) {
+          basliklar[i].classList.add('islem');
+        }
+      });
+    });
+  }
+
+  const govdeGozcusu = new MutationObserver(() => {
+    opsiyonelSutunlariEsle();
+    islemBasligiEsle();
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    const alan = document.getElementById('content-area');
+    if (alan) govdeGozcusu.observe(alan, { childList: true, subtree: true });
+  });
+
   return {
     api, tl, tlTam, sayi, tarih, saatli, bugun, kacir, yonetici, rozet, kalanRozet,
     statGrid, sekmeler, bosSatir, doluluk, modalAc, modalKapat, formVeri, hataGoster,
     formHata, modalFooter, secenekler, enumSecenek, personeller, icerik,
+    opsiyonelSutunlariEsle, islemBasligiEsle,
   };
 })();

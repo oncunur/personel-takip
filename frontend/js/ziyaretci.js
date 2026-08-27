@@ -63,7 +63,7 @@ const ZiyaretciModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Ziyaretçi</th><th>Firma</th><th>Ziyaret Edilen</th><th>Amaç</th><th>Giriş</th><th>Çıkış</th><th>Kart</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Ziyaretçi</th><th>Firma</th><th>Ziyaret Edilen</th><th class="opsiyonel">Amaç</th><th>Giriş</th><th>Çıkış</th><th class="opsiyonel">Kart</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(z => `
             <tr ${z.icerde ? 'style="background:#FFFEF0"' : ''}>
               <td><strong>${O.kacir(z.ad_soyad)}</strong><span class="hucre-alt">${O.kacir(z.telefon || '')}</span></td>

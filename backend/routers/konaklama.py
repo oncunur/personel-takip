@@ -563,6 +563,7 @@ def gider_listesi(
             "id": g.id,
             "konut_id": g.konut_id,
             "konut_ad": g.konut.ad if g.konut else None,
+            "konut_kod": g.konut.kod if g.konut else None,
             "tur": g.tur.value,
             "yil": g.yil, "ay": g.ay,
             "tutar": float(g.tutar),

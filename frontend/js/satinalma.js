@@ -55,7 +55,7 @@ const SatinAlmaModul = (() => {
 
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Talep No</th><th>Talep Eden</th><th>Konu</th><th>Öncelik</th><th>Tutar</th><th>İhtiyaç</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Talep No</th><th>Talep Eden</th><th>Konu</th><th>Öncelik</th><th>Tutar</th><th class="opsiyonel">İhtiyaç</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(t => `
             <tr>
               <td><strong style="font-variant-numeric:tabular-nums">${O.kacir(t.talep_no)}</strong><span class="hucre-alt">${O.tarih(t.tarih)}</span></td>

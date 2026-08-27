@@ -70,7 +70,7 @@ const StokModul = (() => {
       </div>
       <div class="panel" style="overflow-x:auto">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Ürün</th><th>Kategori</th><th>Mevcut</th><th>Kritik</th><th>Birim Fiyat</th><th>Değer</th><th>Raf</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Ürün</th><th>Kategori</th><th>Mevcut</th><th class="opsiyonel">Kritik</th><th>Birim Fiyat</th><th>Değer</th><th class="opsiyonel">Raf</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(u => `
             <tr ${u.kritik_mi ? 'style="background:#FFF5F5"' : ''}>
               <td><strong>${O.kacir(u.ad)}</strong><span class="hucre-alt">${O.kacir(u.kod)}</span></td>

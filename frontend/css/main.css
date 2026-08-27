@@ -404,7 +404,14 @@ html, body {
   font-weight: 700;
   white-space: nowrap;
 }
-.islem-td { display: flex; gap: var(--sp-xxs); align-items: center; }
+.islem-td {
+  display: flex;
+  gap: var(--sp-xxs);
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.islem-td > *, .islem-grup > * { flex-shrink: 0; }
 .btn-ikon {
   width: 22px; height: 22px;
   border: none; background: transparent;
@@ -520,17 +527,6 @@ html, body {
 
 /* ── İzin Modülü ─────────────────────────────────────────────────── */
 .izin-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
-.izin-stats-wrap { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:10px; margin-bottom:4px; }
-.izin-stat-kart {
-  background: white;
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  border: 1px solid var(--gray-100);
-  box-shadow: var(--shadow);
-  display: flex; flex-direction: column; gap: 3px;
-}
-.stat-sayi { font-size: 24px; font-weight: 700; color: var(--gray-900); line-height: 1; }
-.stat-label { font-size: 12px; color: var(--gray-500); }
 .tur-badge {
   display: inline-block;
   padding: 2px 4px;
@@ -563,32 +559,6 @@ html, body {
 .btn-ret:hover { background:#FFF5F5; }
 
 /* ── Raporlar Modülü ─────────────────────────────────────────────── */
-.rapor-kartlar-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
-  gap: 8px;
-}
-.rapor-kart {
-  background: white;
-  border-radius: var(--radius);
-  padding: 12px 12px;
-  border: 1px solid var(--gray-100);
-  box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.rapor-kart-ikon {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.rapor-kart-ikon svg { width: 18px; height: 18px; }
-.rapor-kart-bilgi { display: flex; flex-direction: column; gap: 2px; }
-.rapor-kart-sayi  { font-size: 24px; font-weight: 700; color: var(--gray-900); line-height: 1; }
-.rapor-kart-label { font-size: 12px; color: var(--gray-500); }
-
 .grafik-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -897,6 +867,39 @@ html, body {
   border-left:1px solid var(--border-split);
 }
 
+/* ── Otel konaklama dökümü ──────────────────────────────────────── */
+/* Sayısal sütunlar sağa hizalı olmalı ki rakamlar basamak basamak
+   karşılaştırılabilsin; sütun genişlikleri sabit tutulur, böylece
+   satırdan satıra kayma olmaz. */
+
+
+.dokum-tablo th:nth-child(1), .dokum-tablo td:nth-child(1) { min-width: 150px; }
+.dokum-tablo th:nth-child(2), .dokum-tablo td:nth-child(2) { min-width: 200px; }
+.dokum-tablo th:nth-child(3), .dokum-tablo td:nth-child(3) { width: 60px; }
+.dokum-tablo th:nth-child(4), .dokum-tablo td:nth-child(4) { width: 90px; }
+.dokum-tablo th:nth-child(5), .dokum-tablo td:nth-child(5) { width: 110px; }
+.dokum-tablo th:nth-child(6), .dokum-tablo td:nth-child(6) { width: 150px; }
+
+/* Her hücre iki satır taşıyabildiği için dikey hizayı üstten kur */
+.dokum-tablo td { padding-top: var(--sp-xs); padding-bottom: var(--sp-xs); }
+
+/* Uzun konaklama dikkat çeker: otel geçici olmalı */
+.uyari-sayi { color: var(--danger); }
+
+/* Fatura numarası satırın gürültüsünü artırmasın diye sade */
+.fatura-no {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--success);
+  white-space: nowrap;
+}
+.otel-dokum .pano-container-bas { border-bottom: 1px solid var(--border-split); }
+
+/* İkincil bilgi genel tabloda satır içi duruyor; dökümde alt satıra
+   iner. Böylece her satır iki satırlık aynı yüksekliği alır ve
+   sütunlar birbirini kaydırmaz. */
+
 /* Fatura işleme penceresindeki konaklama özeti */
 .fatura-ozet {
   background: var(--gray-50);
@@ -983,7 +986,8 @@ html, body {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  min-width: 900px;
+  /* 11 sütunluk hâl için 900px konmuştu; tablo 6 sütuna indi */
+  min-width: 640px;
 }
 .ozet-tablo th {
   padding: 4px 8px;
@@ -1020,7 +1024,6 @@ html, body {
 .ozet-sayi  { text-align: right; font-variant-numeric: tabular-nums; }
 .ozet-devamsiz { color: #DB0000 !important; font-weight: 700; }
 .ozet-izinli   { color: #006CE0 !important; font-weight: 600; }
-.ozet-fm       { color: #855900 !important; font-weight: 600; }
 .ozet-sifir    { color: var(--gray-300) !important; }
 .ozet-toplam-satir td {
   background: var(--gray-50) !important;
@@ -1174,12 +1177,21 @@ html, body {
 /* Satır içi ikincil bilgi */
 /* İkincil hücre bilgisi (kod, e-posta, açıklama) satır yüksekliğini
    ikiye katlamasın diye asıl değerin yanında durur. */
+/* İkincil hücre bilgisi. Tablo içinde alt satıra iner: satır içi kaldığında
+   sütunlar gereğinden geniş oluyor ve tablo yatay kaymaya başlıyordu.
+   Tablo dışında (form, kutu) satır içi kalmayı sürdürür. */
 .hucre-alt {
   display: inline;
   margin-left: var(--sp-s);
   font-size: 12px;
   line-height: 16px;
   color: var(--text-3);
+}
+.personel-tablo td .hucre-alt,
+.idari-tablo td .hucre-alt,
+.ozet-tablo td .hucre-alt {
+  display: block;
+  margin-left: 0;
 }
 
 /* Toplantı odası günlük şerit görünümü */
@@ -1202,3 +1214,116 @@ html, body {
 
 /* İdari modüllerde kolon sayısı fazla — panel içinde yatay kaydır, sıkıştırma */
 .panel > .idari-tablo { min-width: 720px; }
+
+/* ── Gider tablosu: konut gideri + otel konaklaması tek listede ── */
+.gider-ozet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-m) var(--sp-l);
+  align-items: baseline;
+  padding: var(--sp-s) var(--sp-m);
+  margin-bottom: var(--sp-s);
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+.gider-ozet strong { color: var(--gray-800); font-variant-numeric: tabular-nums; }
+.gider-ozet-toplam { margin-left: auto; }
+.gider-ozet-toplam strong { color: var(--primary); }
+
+
+/* ── Ortak tablo dili ───────────────────────────────────────────────
+   Sayı sütunları sağa hizalı ve eşit genişlikli rakamla, işlem sütunu
+   sağda ve tek satırda. Daha önce her tablo bunu kendi içinde yeniden
+   tanımlıyordu. */
+.personel-tablo th.sayi, .personel-tablo td.sayi,
+.idari-tablo th.sayi, .idari-tablo td.sayi,
+.ozet-tablo th.sayi, .ozet-tablo td.sayi {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.personel-tablo th.islem, .personel-tablo td.islem,
+.idari-tablo th.islem, .idari-tablo td.islem {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+.personel-tablo td, .idari-tablo td { vertical-align: top; }
+.islem-grup {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+
+/* Veri tek kategoriye düştüğünde grafik yerine gösterilen not */
+.grafik-bos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+/* Özet tablosunda ad altındaki pozisyon · departman satırı sütunu
+   genişletip tabloyu kaydırıyordu; sığmayan kısım kısaltılıyor. */
+.ozet-tablo td .hucre-alt {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Dar ekran ─────────────────────────────────────────────────────
+   232px'lik kenar çubuğu dar pencerede içerik alanını 500px'in altına
+   düşürüyor ve her tablo yatay kaymaya başlıyordu. Belirli genişliğin
+   altında kenar çubuğu ikonlara iner, hücre boşlukları daralır. */
+@media (max-width: 1180px) {
+  :root { --sidebar-w: 52px; }
+
+  .sidebar-header { justify-content: center; padding: var(--sp-s) 0; }
+  .sidebar-header span { display: none; }
+
+  .nav-baslik { display: none; }
+  .nav-item { justify-content: center; padding: var(--sp-xs) 0; }
+  .nav-item span { display: none; }
+  .nav-item svg { width: 17px; height: 17px; }
+  /* Metin gizlendiği için etkin sayfa yalnızca ikon rengiyle ayrılıyordu;
+     yuvarlak köşeye oturan bir zemin ekleniyor. */
+  .nav-item.active { background: var(--primary-light); }
+
+  .kullanici-bilgi { display: none; }
+  .btn-cikis { justify-content: center; padding: var(--sp-xs) 0; }
+  .btn-cikis span { display: none; }
+  .sidebar-footer { padding: var(--sp-xs) 0; }
+
+  #content-area { padding: var(--sp-s) var(--sp-m); }
+  .personel-tablo th, .personel-tablo td,
+  .idari-tablo th, .idari-tablo td { padding-left: var(--sp-s); padding-right: var(--sp-s); }
+}
+
+/* Çok dar pencerede tablo içeriği daha da sıkışır */
+@media (max-width: 900px) {
+  .personel-tablo, .idari-tablo, .ozet-tablo { font-size: 13px; }
+  .personel-tablo th, .personel-tablo td,
+  .idari-tablo th, .idari-tablo td { padding-left: var(--sp-xs); padding-right: var(--sp-xs); }
+  .idari-stat-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .idari-stat { padding: var(--sp-s) var(--sp-m); }
+  .grafik-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Dar ekranda ikincil sütunlar gizlenir; bilgi kaybolmaz, kayıt
+   detayında durmayı sürdürür. */
+@media (max-width: 1000px) {
+  .personel-tablo th.opsiyonel, .personel-tablo td.opsiyonel,
+  .idari-tablo th.opsiyonel, .idari-tablo td.opsiyonel { display: none; }
+
+  /* Başlık metni sütunu içeriğinden geniş tutuyordu */
+  .personel-tablo thead th, .idari-tablo thead th { font-size: 12px; }
+  /* İkon düğmeleri kendi başlarına anlaşılıyor; başlık yer kaplamasın */
+  .personel-tablo th.islem, .idari-tablo th.islem { font-size: 0; }
+}
