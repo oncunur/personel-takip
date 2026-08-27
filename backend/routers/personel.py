@@ -9,7 +9,7 @@ import models
 import kimlik
 from database import get_db
 from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from datetime import date
 from decimal import Decimal
 
@@ -72,6 +72,17 @@ class KimlikKarma(BaseModel):
         if v and v not in kimlik.ULKELER:
             raise ValueError("Geçersiz uyruk kodu")
         return v
+
+    @model_validator(mode="after")
+    def _uyruk_kimlik_uyumu(self):
+        hata = kimlik.kimlik_kurali_hatasi(
+            getattr(self, "uyruk", None),
+            getattr(self, "tc_kimlik", None),
+            getattr(self, "yabanci_kimlik_no", None),
+        )
+        if hata:
+            raise ValueError(hata)
+        return self
 
 
 class PersonelOlustur(KimlikKarma):
@@ -321,7 +332,23 @@ def personel_guncelle(pid: int, veri: PersonelGuncelle, db: Session = Depends(ge
     if not p:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
     _benzersizlik_denetle(db, veri.email, veri.tc_kimlik, veri.yabanci_kimlik_no, haric_id=pid)
-    for alan, deger in veri.model_dump(exclude_none=True).items():
+
+    # Kısmi güncellemede kural, gelen alanlarla kayıttaki mevcut
+    # değerlerin birleşimi üzerinden denetlenir: yalnızca uyruk
+    # değiştirildiğinde de eski kimlik numarası kuralı bozabilir.
+    # exclude_unset: gönderilmeyen alanlar atlanır, ama açıkça null
+    # gönderilen alanlar temizlenebilir. exclude_none kullanılsaydı
+    # "TC kimliği sil ve YKN'ye geç" gibi bir güncelleme yapılamazdı.
+    degisiklik = veri.model_dump(exclude_unset=True)
+    hata = kimlik.kimlik_kurali_hatasi(
+        uyruk=degisiklik.get("uyruk", p.uyruk),
+        tc=degisiklik.get("tc_kimlik", p.tc_kimlik),
+        ykn=degisiklik.get("yabanci_kimlik_no", p.yabanci_kimlik_no),
+    )
+    if hata:
+        raise HTTPException(status_code=400, detail=hata)
+
+    for alan, deger in degisiklik.items():
         setattr(p, alan, deger)
     db.commit(); db.refresh(p)
     return personel_bilgi(p)

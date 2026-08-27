@@ -200,15 +200,15 @@ const PersonelModul = (() => {
 
         <div class="form-bolum-baslik">Kimlik Bilgileri</div>
         <p class="hucre-alt" style="margin:-4px 0 8px">
-          Türk vatandaşları için TC kimlik, yabancı çalışanlar için
-          YKN ve pasaport bilgisi girilir. Yalnızca ilgili alanları doldurun.
+          <span id="pf-kimlik-ipucu">Kimlik alanları uyruğa göre açılır:
+          Türkiye seçilirse TC kimlik, diğer uyruklarda YKN girilir.</span>
         </p>
         <div class="form-grid-2">
-          <div class="form-group"><label>TC Kimlik No</label>
-            <input name="tc_kimlik" maxlength="11" inputmode="numeric"
+          <div class="form-group" id="pf-tc-grup"><label>TC Kimlik No</label>
+            <input name="tc_kimlik" id="pf-tc" maxlength="11" inputmode="numeric"
                    value="${p.tc_kimlik||''}" placeholder="11 haneli" /></div>
-          <div class="form-group"><label>Yabancı Kimlik No (YKN)</label>
-            <input name="yabanci_kimlik_no" maxlength="11" inputmode="numeric"
+          <div class="form-group" id="pf-ykn-grup"><label>Yabancı Kimlik No (YKN)</label>
+            <input name="yabanci_kimlik_no" id="pf-ykn" maxlength="11" inputmode="numeric"
                    value="${p.yabanci_kimlik_no||''}" placeholder="99 ile başlayan 11 hane" /></div>
           <div class="form-group"><label>Pasaport No</label>
             <input name="pasaport_no" maxlength="20"
@@ -249,6 +249,47 @@ const PersonelModul = (() => {
     `;
   }
 
+
+  // Uyruk ile kimlik türü eşleşmesi: Türk vatandaşlarına TC kimlik,
+  // diğer uyruklara YKN. İlgisiz alan kilitlenir ve temizlenir ki
+  // sunucuya kural dışı veri gitmesin.
+  function kimlikAlanlariniAyarla() {
+    const uyruk = document.getElementById('pf-uyruk')?.value || '';
+    const tc = document.getElementById('pf-tc');
+    const ykn = document.getElementById('pf-ykn');
+    const ipucu = document.getElementById('pf-kimlik-ipucu');
+    if (!tc || !ykn) return;
+
+    const kilitle = (alan, kilitli, aciklama) => {
+      alan.disabled = kilitli;
+      alan.closest('.form-group').classList.toggle('form-group-kilitli', kilitli);
+      alan.placeholder = kilitli ? aciklama : alan.dataset.ipucu;
+      if (kilitli) alan.value = '';
+    };
+    if (!tc.dataset.ipucu) { tc.dataset.ipucu = tc.placeholder; ykn.dataset.ipucu = ykn.placeholder; }
+
+    if (!uyruk) {
+      kilitle(tc, true, 'Önce uyruk seçin');
+      kilitle(ykn, true, 'Önce uyruk seçin');
+      if (ipucu) ipucu.textContent = 'Kimlik alanları uyruğa göre açılır: Türkiye seçilirse TC kimlik, diğer uyruklarda YKN girilir.';
+      return;
+    }
+    const turk = uyruk === 'TR';
+    kilitle(tc, !turk, 'Yabancı uyruklu için TC kimlik girilemez');
+    kilitle(ykn, turk, 'Türk vatandaşı için YKN girilemez');
+    if (ipucu) {
+      ipucu.textContent = turk
+        ? 'Türk vatandaşı: TC kimlik numarası girilir.'
+        : 'Yabancı uyruklu: Türkiye\'de verilen YKN ve pasaport bilgisi girilir.';
+    }
+  }
+
+  function kimlikDinleyiciKur() {
+    const uyruk = document.getElementById('pf-uyruk');
+    if (uyruk) uyruk.addEventListener('change', kimlikAlanlariniAyarla);
+    kimlikAlanlariniAyarla();
+  }
+
   function formDegerlerAl(form) {
     const fd = new FormData(form);
     const obj = {};
@@ -270,6 +311,7 @@ const PersonelModul = (() => {
       document.getElementById('modal-baslik').textContent = 'Personel Ekle';
       document.getElementById('modal-icerik').innerHTML = formHtml();
       document.getElementById('personel-modal').classList.remove('gizli');
+      kimlikDinleyiciKur();
       document.getElementById('personel-form').addEventListener('submit', async e => {
         e.preventDefault();
         const veri = formDegerlerAl(e.target);
@@ -291,6 +333,7 @@ const PersonelModul = (() => {
       document.getElementById('modal-baslik').textContent = 'Personel Düzenle';
       document.getElementById('modal-icerik').innerHTML = formHtml(p);
       document.getElementById('personel-modal').classList.remove('gizli');
+      kimlikDinleyiciKur();
       document.getElementById('personel-form').addEventListener('submit', async e => {
         e.preventDefault();
         const veri = formDegerlerAl(e.target);

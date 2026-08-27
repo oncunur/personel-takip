@@ -268,3 +268,92 @@ def test_sema_guncelleyici_benzersiz_indeksi_kurar(db_session):
     indeksler = {i["name"]: i for i in inspect(engine).get_indexes("personeller")}
     # SQLite bu alanı 1 olarak döndürür, sürücüye göre True da olabilir
     assert bool(indeksler["ix_personeller_yabanci_kimlik_no"]["unique"])
+
+
+# ─── Uyruk ile kimlik türü uyumu ─────────────────────────────────────
+
+@pytest.mark.parametrize("uyruk,tc,ykn,gecerli", [
+    ("TR", "10000000146", None, True),          # Türk + TC
+    ("TR", None, "99123456780", False),         # Türk + YKN yasak
+    ("UZ", None, "99123456780", True),          # Yabancı + YKN
+    ("UZ", "10000000146", None, False),         # Yabancı + TC yasak
+    ("RU", "10000000146", "99123456780", False),
+    (None, "10000000146", None, True),          # uyruk yoksa denetim yok
+])
+def test_kimlik_kurali(uyruk, tc, ykn, gecerli):
+    hata = kimlik.kimlik_kurali_hatasi(uyruk, tc, ykn)
+    assert (hata is None) is gecerli
+
+
+def test_yabanciya_tc_girilemez(client, token, kullanici_olustur):
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    r = client.post("/personel", headers=token("mudur"), json={
+        "ad": "Aziz", "soyad": "Karimov", "email": "aziz@sirket.com",
+        "uyruk": "UZ", "tc_kimlik": "10000000146"})
+    assert r.status_code == 422
+    assert "TC kimlik numarası girilemez" in r.text
+
+
+def test_turke_ykn_girilemez(client, token, kullanici_olustur):
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    r = client.post("/personel", headers=token("mudur"), json={
+        "ad": "Kemal", "soyad": "Yilmaz", "email": "kemal@sirket.com",
+        "uyruk": "TR", "yabanci_kimlik_no": "99123456780"})
+    assert r.status_code == 422
+    assert "yabancı kimlik numarası girilemez" in r.text.lower()
+
+
+def test_dogru_eslesmeler_kabul_edilir(client, token, kullanici_olustur):
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    h = token("mudur")
+    assert client.post("/personel", headers=h, json={
+        "ad": "Kemal", "soyad": "Yilmaz", "email": "kemal@sirket.com",
+        "uyruk": "TR", "tc_kimlik": "10000000146"}).status_code == 201
+    assert client.post("/personel", headers=h, json={
+        "ad": "Aziz", "soyad": "Karimov", "email": "aziz@sirket.com",
+        "uyruk": "UZ", "yabanci_kimlik_no": "99123456780"}).status_code == 201
+
+
+def test_uyruk_degistirince_eski_kimlik_kurali_bozarsa_reddedilir(
+        client, token, kullanici_olustur, db_session):
+    """Yalnızca uyruk güncellenirken kayıttaki TC kural dışı kalmamalı."""
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    h = token("mudur")
+    olustur = client.post("/personel", headers=h, json={
+        "ad": "Kemal", "soyad": "Yilmaz", "email": "kemal@sirket.com",
+        "uyruk": "TR", "tc_kimlik": "10000000146"})
+    pid = olustur.json()["id"]
+
+    # Uyruğu Özbekistan'a çevirmek, kayıtlı TC ile çelişir
+    r = client.put(f"/personel/{pid}", headers=h, json={"uyruk": "UZ"})
+    assert r.status_code == 400
+    assert "TC kimlik numarası girilemez" in r.json()["detail"]
+
+    # Kayıt bozulmamış olmalı
+    d = client.get(f"/personel/{pid}", headers=h).json()
+    assert d["uyruk"] == "TR" and d["tc_kimlik"] == "10000000146"
+
+
+def test_uyruk_ve_kimlik_birlikte_degistirilebilir(client, token, kullanici_olustur):
+    """TC silinip YKN verilerek uyruk değişimi mümkün olmalı."""
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    h = token("mudur")
+    pid = client.post("/personel", headers=h, json={
+        "ad": "Kemal", "soyad": "Yilmaz", "email": "kemal@sirket.com",
+        "uyruk": "TR", "tc_kimlik": "10000000146"}).json()["id"]
+
+    r = client.put(f"/personel/{pid}", headers=h, json={
+        "uyruk": "UZ", "tc_kimlik": None, "yabanci_kimlik_no": "99123456780"})
+    assert r.status_code == 200, r.text
+    assert r.json()["uyruk"] == "UZ"
+    assert r.json()["yabanci_kimlik_no"] == "99123456780"
+
+
+def test_pasaport_her_uyrukta_girilebilir(client, token, kullanici_olustur):
+    """Pasaport kısıtlamaya tabi değil; Türk vatandaşının da pasaportu olabilir."""
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    r = client.post("/personel", headers=token("mudur"), json={
+        "ad": "Kemal", "soyad": "Yilmaz", "email": "kemal@sirket.com",
+        "uyruk": "TR", "tc_kimlik": "10000000146", "pasaport_no": "U12345678"})
+    assert r.status_code == 201
+    assert r.json()["pasaport_no"] == "U12345678"

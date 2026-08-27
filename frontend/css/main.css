@@ -635,6 +635,16 @@ html, body {
   border-bottom: 1px solid var(--border-split);
 }
 
+/* Uyruğa göre kilitlenen kimlik alanı */
+.form-group-kilitli label { color: var(--text-4); }
+.form-group-kilitli input {
+  background: var(--gray-50);
+  color: var(--text-4);
+  border-color: var(--border-split);
+  cursor: not-allowed;
+}
+.form-group-kilitli input::placeholder { color: var(--text-4); font-style: italic; }
+
 /* Uyruk kodu etiketi (TR, UZ, KG ...) */
 .uyruk-etiket {
   display: inline-block;

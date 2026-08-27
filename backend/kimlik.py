@@ -97,3 +97,36 @@ def pasaport_gecerli(no: str) -> bool:
         return False
     temiz = no.replace(" ", "")
     return 5 <= len(temiz) <= 20 and temiz.isalnum()
+
+
+# ─── Uyruk ile kimlik türü ilişkisi ─────────────────────────────────
+# Türk vatandaşlarına TC kimlik numarası, diğer uyruklara Türkiye'de
+# verilen YKN işlenir. İkisi bir arada bulunamaz.
+
+TURKIYE = "TR"
+
+
+def turk_vatandasi(uyruk: Optional[str]) -> bool:
+    return uyruk == TURKIYE
+
+
+def kimlik_kurali_hatasi(uyruk: Optional[str], tc: Optional[str],
+                         ykn: Optional[str]) -> Optional[str]:
+    """Uyruk ile girilen kimlik numarası uyuşmuyorsa hata metni döner.
+
+    Uyruk belirtilmemişse denetim yapılmaz; eski kayıtlarda bu alan
+    boş olabilir ve yalnızca telefon gibi bir alanı güncellemek
+    kimlik bilgisi girmeyi zorunlu kılmamalıdır.
+    """
+    if not uyruk:
+        return None
+
+    if turk_vatandasi(uyruk):
+        if ykn:
+            return ("Türk vatandaşları için yabancı kimlik numarası girilemez; "
+                    "TC kimlik numarası kullanın")
+    else:
+        if tc:
+            return ("Yabancı uyruklu çalışanlar için TC kimlik numarası girilemez; "
+                    "yabancı kimlik numarası (YKN) kullanın")
+    return None
