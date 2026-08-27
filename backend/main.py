@@ -27,7 +27,18 @@ app = FastAPI(title="Personel ve İdari İşler Sistemi", version="2.0.0")
 # geliştirmede tüm localhost portlarına izin veriyoruz.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    # Safari localhost'u ::1'e cozuyor; ayrica uygulama yerel agdaki
+    # baska bir cihazdan (telefon, ikinci bilgisayar) da acilabiliyor.
+    # Yalnizca loopback ve ozel ag araliklari kabul edilir — internete
+    # acik adresler disarida kalir.
+    allow_origin_regex=(
+        r"http://("
+        r"localhost|127\.0\.0\.1|\[::1\]|"
+        r"192\.168\.\d{1,3}\.\d{1,3}|"
+        r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+        r"172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+        r")(:\d+)?$"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

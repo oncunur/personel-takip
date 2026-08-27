@@ -13,7 +13,14 @@ function hataMetni(govde, varsayilan = 'İşlem başarısız') {
   return varsayilan;
 }
 
-const API_URL = 'http://localhost:8000';
+// API, sayfanın açıldığı adreste 8000 portunda aranır. Sabit "localhost"
+// yazılıydı; sayfa başka bir adresten (makinenin IP'si, başka bir cihaz)
+// açıldığında istekler yanlış yere gidiyordu.
+const API_URL = (() => {
+  const host = location.hostname || 'localhost';
+  const protokol = location.protocol === 'https:' ? 'https:' : 'http:';
+  return `${protokol}//${host}:8000`;
+})();
 
 const api = {
   async giris(kullanici_adi, sifre) {

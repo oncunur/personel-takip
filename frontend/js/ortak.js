@@ -1,7 +1,7 @@
 // ─── İdari İşler Ortak Katmanı ─────────────────────────────────────
 // Tüm idari modüllerin paylaştığı API çağrısı, biçimlendirme ve UI parçaları.
 const Ortak = (() => {
-  const BASE = 'http://localhost:8000';
+  const BASE = API_URL;   // api.js'te tanımlı; adres iki yerde tekrarlanıyordu
 
   async function api(url, opts = {}) {
     const token = Auth.getToken();
