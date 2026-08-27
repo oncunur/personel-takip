@@ -3,12 +3,15 @@ const KonaklamaModul = (() => {
   const O = Ortak;
   let sekme = 'konutlar';
   let konutlar = [], kayitlar = [], giderler = [], ozet = null;
-  let arama = '', filtreTur = '', filtreDurum = '';
+  let arama = '', filtreTur = '', filtreDurum = '', filtreOdeme = '';
 
   const TUR = {
     kiralik_daire: 'Kiralık Daire', lojman: 'Lojman', misafirhane: 'Misafirhane',
-    santiye_barakasi: 'Şantiye Barakası', otel: 'Otel',
+    santiye_barakasi: 'Şantiye Barakası', otel: 'Otel', kamp: 'Kamp',
   };
+  // Kamp bedelini işveren karşıladığında şirkete gider yükü doğmaz
+  const ODEME = { bykara: 'Bykara ödemeli', isveren: 'İşveren ödemeli' };
+  const ODEME_RENK = { bykara: '#855900', isveren: '#00802F' };
   const DURUM = { aktif: 'Aktif', bos: 'Boş', pasif: 'Pasif' };
   const DURUM_RENK = { aktif: '#00802F', bos: '#656871', pasif: '#8C8C94' };
   const GIDER_TUR = {
@@ -47,7 +50,8 @@ const KonaklamaModul = (() => {
       </div>` : ''}
 
       ${O.sekmeler('knk-tabs', [
-        { key: 'konutlar', ad: 'Konutlar', rozet: konutlar.length },
+        { key: 'konutlar', ad: 'Kiralık Evler', rozet: konutlar.filter(k => !k.kamp_mi).length },
+        { key: 'kamplar', ad: 'Kamplar', rozet: konutlar.filter(k => k.kamp_mi).length },
         { key: 'sakinler', ad: 'Yerleşim', rozet: kayitlar.filter(k => k.aktif).length },
         { key: 'giderler', ad: 'Giderler', rozet: giderler.length },
       ], sekme)}
@@ -57,11 +61,12 @@ const KonaklamaModul = (() => {
     document.querySelectorAll('#knk-tabs .idari-tab').forEach(b => {
       b.onclick = () => { sekme = b.dataset.tab; render(); };
     });
-    ({ konutlar: konutlarGovde, sakinler: sakinlerGovde, giderler: giderlerGovde })[sekme](y);
+    ({ konutlar: konutlarGovde, kamplar: kamplarGovde, sakinler: sakinlerGovde, giderler: giderlerGovde })[sekme](y);
   }
 
   function konutlarGovde(y) {
-    const liste = konutlar.filter(k =>
+    // Kamplar ayrı sekmede listelenir
+    const liste = konutlar.filter(k => !k.kamp_mi).filter(k =>
       (!arama || `${k.ad} ${k.kod} ${k.adres || ''} ${k.ev_sahibi_ad || ''}`.toLowerCase().includes(arama.toLowerCase())) &&
       (!filtreTur || k.tur === filtreTur) && (!filtreDurum || k.durum === filtreDurum));
 
@@ -106,6 +111,75 @@ const KonaklamaModul = (() => {
     document.getElementById('knk-arama').oninput = e => { arama = e.target.value; konutlarGovde(y); };
     document.getElementById('knk-tur').onchange = e => { filtreTur = e.target.value; konutlarGovde(y); };
     document.getElementById('knk-durum').onchange = e => { filtreDurum = e.target.value; konutlarGovde(y); };
+  }
+
+  // Kamplar mavi yaka konaklamasıdır; kiralık evlerden farklı olarak
+  // bir kısmının bedelini işveren karşılar, kira takibi yapılmaz.
+  function kamplarGovde(y) {
+    const liste = konutlar.filter(k => k.kamp_mi).filter(k =>
+      (!arama || `${k.ad} ${k.kod} ${k.adres || ''}`.toLowerCase().includes(arama.toLowerCase())) &&
+      (!filtreOdeme || k.odeme_sorumlusu === filtreOdeme) &&
+      (!filtreDurum || k.durum === filtreDurum));
+
+    const kapasite = liste.reduce((t, k) => t + (k.kapasite || 0), 0);
+    const dolu = liste.reduce((t, k) => t + (k.dolu || 0), 0);
+    const bykara = liste.filter(k => k.odeme_sorumlusu === 'bykara');
+    const isveren = liste.filter(k => k.odeme_sorumlusu === 'isveren');
+
+    document.getElementById('knk-govde').innerHTML = `
+      ${O.statGrid([
+        { label: 'Kamp', deger: liste.length, alt: `${kapasite} yatak kapasitesi` },
+        { label: 'Doluluk', deger: `%${kapasite ? Math.round(dolu / kapasite * 100) : 0}`,
+          alt: `${dolu} dolu / ${Math.max(kapasite - dolu, 0)} boş`, renk: '#006CE0' },
+        { label: 'İşveren ödemeli', deger: isveren.length,
+          alt: `${isveren.reduce((t, k) => t + (k.kapasite || 0), 0)} yatak`, renk: '#00802F' },
+        { label: 'Bykara ödemeli', deger: bykara.length,
+          alt: `${bykara.reduce((t, k) => t + (k.kapasite || 0), 0)} yatak`, renk: '#855900' },
+      ])}
+
+      <div class="personel-toolbar">
+        <div class="arama-grup">
+          <div class="arama-input-wrap">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+            <input type="text" id="kmp-arama" placeholder="Kamp adı, kod, adres ara..." value="${O.kacir(arama)}" />
+          </div>
+          <select id="kmp-odeme" class="filtre-select">
+            <option value="">Tüm Ödemeler</option>${O.enumSecenek(ODEME, filtreOdeme)}
+          </select>
+          <select id="kmp-durum" class="filtre-select">
+            <option value="">Tüm Durumlar</option>${O.enumSecenek(DURUM, filtreDurum)}
+          </select>
+        </div>
+        <div class="toolbar-sagda">
+          <span style="font-size:13px;color:var(--text-3)">${liste.length} kamp</span>
+          ${y ? `<button class="btn-yeni" onclick="KonaklamaModul.yeniKonut(null, 'kamp')">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+            Kamp Ekle</button>` : ''}
+        </div>
+      </div>
+
+      <div class="panel" style="overflow-x:auto">
+        <table class="personel-tablo idari-tablo">
+          <thead><tr><th>Kamp</th><th>Ödeme</th><th>Konum</th><th>Doluluk</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <tbody>${liste.length ? liste.map(k => `
+            <tr>
+              <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}</span></td>
+              <td>${O.rozet(ODEME[k.odeme_sorumlusu] || '—', ODEME_RENK[k.odeme_sorumlusu] || '#656871')}</td>
+              <td>${O.kacir(k.il || '—')}<span class="hucre-alt">${O.kacir(k.ilce || '')}</span></td>
+              <td>${O.doluluk(k.doluluk_yuzde)} <span style="font-size:12px;color:var(--text-2);margin-left:6px">${k.dolu}/${k.kapasite}</span></td>
+              <td>${O.rozet(DURUM[k.durum] || k.durum, DURUM_RENK[k.durum] || '#656871')}</td>
+              <td class="islem-td">
+                ${y ? `<button class="btn-mini" onclick="KonaklamaModul.yeniKonut(${k.id})">Düzenle</button>` : ''}
+              </td>
+            </tr>`).join('') : O.bosSatir('Kamp bulunamadı', 6)}
+          </tbody>
+        </table>
+      </div>`;
+
+    const ara = document.getElementById('kmp-arama');
+    ara.oninput = e => { arama = e.target.value; kamplarGovde(y); ara.focus(); };
+    document.getElementById('kmp-odeme').onchange = e => { filtreOdeme = e.target.value; kamplarGovde(y); };
+    document.getElementById('kmp-durum').onchange = e => { filtreDurum = e.target.value; kamplarGovde(y); };
   }
 
   function sakinlerGovde(y) {
@@ -177,25 +251,37 @@ const KonaklamaModul = (() => {
   return {
     async yukle() { arama = ''; filtreTur = ''; filtreDurum = ''; await veriYukle(); render(); },
 
-    yeniKonut(id) {
+    // varsayilanTur: kamplar sekmesinden açılınca tür önceden seçili gelir
+    yeniKonut(id, varsayilanTur) {
       const k = id ? konutlar.find(x => x.id === id) || {} : {};
+      const tur = k.tur || (typeof id === 'string' ? id : varsayilanTur) || 'kiralik_daire';
+      const kampMi = tur === 'kamp';
       const alan = (ad, etiket, tip = 'text', deger = '') =>
         `<div class="form-group"><label>${etiket}</label><input name="${ad}" type="${tip}" value="${O.kacir(deger ?? '')}" ${tip === 'number' ? 'step="0.01"' : ''} /></div>`;
-      const g = O.modalAc(id ? 'Konut Düzenle' : 'Konut Ekle', `
+      const baslik = id ? (kampMi ? 'Kamp Düzenle' : 'Konut Düzenle') : (kampMi ? 'Kamp Ekle' : 'Konut Ekle');
+      const g = O.modalAc(baslik, `
         <form id="knk-form" class="modal-form">
           <div class="form-grid-2">
-            <div class="form-group"><label>Konut Adı *</label><input name="ad" required value="${O.kacir(k.ad || '')}" placeholder="Merkez Lojman A Blok" /></div>
-            <div class="form-group"><label>Tür</label><select name="tur">${O.enumSecenek(TUR, k.tur || 'kiralik_daire')}</select></div>
+            <div class="form-group"><label>${kampMi ? 'Kamp' : 'Konut'} Adı *</label>
+              <input name="ad" required value="${O.kacir(k.ad || '')}"
+                     placeholder="${kampMi ? 'Wesna Kamp' : 'Merkez Lojman A Blok'}" /></div>
+            <div class="form-group"><label>Tür</label>
+              <select name="tur" id="knk-tur-sec">${O.enumSecenek(TUR, tur)}</select></div>
+            <div class="form-group" id="knk-odeme-grup"><label>Ödemeyi kim yapıyor</label>
+              <select name="odeme_sorumlusu">${O.enumSecenek(ODEME, k.odeme_sorumlusu || 'bykara')}</select>
+              <span class="hucre-alt">İşveren ödemeli kamplarda şirkete gider yükü doğmaz.</span></div>
             ${alan('il', 'İl', 'text', k.il)}
             ${alan('ilce', 'İlçe', 'text', k.ilce)}
-            ${alan('oda_sayisi', 'Oda Sayısı', 'text', k.oda_sayisi)}
             ${alan('kapasite', 'Yatak Kapasitesi', 'number', k.kapasite ?? 1)}
-            ${alan('aylik_kira', 'Aylık Kira (₺)', 'number', k.aylik_kira)}
-            ${alan('depozito', 'Depozito (₺)', 'number', k.depozito)}
-            ${alan('aidat', 'Aidat (₺)', 'number', k.aidat)}
-            ${alan('ev_sahibi_ad', 'Ev Sahibi', 'text', k.ev_sahibi_ad)}
-            ${alan('ev_sahibi_telefon', 'Ev Sahibi Telefon', 'text', k.ev_sahibi_telefon)}
-            ${alan('ev_sahibi_iban', 'IBAN', 'text', k.ev_sahibi_iban)}
+            <div id="knk-kira-alanlari" class="form-grid-2" style="display:contents">
+              ${alan('oda_sayisi', 'Oda Sayısı', 'text', k.oda_sayisi)}
+              ${alan('aylik_kira', 'Aylık Kira (₺)', 'number', k.aylik_kira)}
+              ${alan('depozito', 'Depozito (₺)', 'number', k.depozito)}
+              ${alan('aidat', 'Aidat (₺)', 'number', k.aidat)}
+              ${alan('ev_sahibi_ad', 'Ev Sahibi', 'text', k.ev_sahibi_ad)}
+              ${alan('ev_sahibi_telefon', 'Ev Sahibi Telefon', 'text', k.ev_sahibi_telefon)}
+              ${alan('ev_sahibi_iban', 'IBAN', 'text', k.ev_sahibi_iban)}
+            </div>
             ${alan('sozlesme_baslangic', 'Sözleşme Başlangıç', 'date', k.sozlesme_baslangic)}
             ${alan('sozlesme_bitis', 'Sözleşme Bitiş', 'date', k.sozlesme_bitis)}
             ${id ? `<div class="form-group"><label>Durum</label><select name="durum">${O.enumSecenek(DURUM, k.durum)}</select></div>` : ''}
@@ -204,6 +290,18 @@ const KonaklamaModul = (() => {
           <div class="form-group"><label>Notlar</label><textarea name="notlar" rows="2">${O.kacir(k.notlar || '')}</textarea></div>
           ${O.formHata()}${O.modalFooter()}
         </form>`, true);
+
+      // Kamplarda kira, depozito ve ev sahibi bilgisi tutulmaz
+      const turSec = g.querySelector('#knk-tur-sec');
+      const kiraAlanlari = g.querySelector('#knk-kira-alanlari');
+      const odemeGrup = g.querySelector('#knk-odeme-grup');
+      const alanlariAyarla = () => {
+        const kamp = turSec.value === 'kamp';
+        kiraAlanlari.style.display = kamp ? 'none' : 'contents';
+        odemeGrup.style.display = kamp ? '' : 'none';
+      };
+      turSec.addEventListener('change', alanlariAyarla);
+      alanlariAyarla();
 
       g.querySelector('#knk-form').onsubmit = async e => {
         e.preventDefault();

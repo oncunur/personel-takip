@@ -197,6 +197,17 @@ class KonutTur(str, enum.Enum):
     misafirhane      = "misafirhane"
     santiye_barakasi = "santiye_barakasi"
     otel             = "otel"
+    kamp             = "kamp"
+
+
+class OdemeSorumlusu(str, enum.Enum):
+    """Konaklama bedelini kimin karşıladığı.
+
+    Kampların bir kısmının ücretini işveren karşılar, bir kısmını
+    şirket kendi öder; gider raporlarında bu ayrım gerekir.
+    """
+    bykara  = "bykara"      # şirketin kendi ödediği
+    isveren = "isveren"
 
 
 class KonutDurum(str, enum.Enum):
@@ -224,6 +235,9 @@ class Konut(Base):
     kod                = Column(String, unique=True, nullable=False, index=True)  # KNT-001
     ad                 = Column(String, nullable=False)
     tur                = Column(Enum(KonutTur), default=KonutTur.kiralik_daire)
+    # Kamp bedelini işveren karşılıyorsa şirketin gider yükü doğmaz;
+    # doluluk ve kapasite yine takip edilir.
+    odeme_sorumlusu    = Column(Enum(OdemeSorumlusu), default=OdemeSorumlusu.bykara, index=True)
     adres              = Column(String, nullable=True)
     il                 = Column(String, nullable=True)
     ilce               = Column(String, nullable=True)

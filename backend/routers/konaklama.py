@@ -25,6 +25,7 @@ class KonutOlustur(BaseModel):
     kod: Optional[str] = None
     ad: str
     tur: models.KonutTur = models.KonutTur.kiralik_daire
+    odeme_sorumlusu: models.OdemeSorumlusu = models.OdemeSorumlusu.bykara
     adres: Optional[str] = None
     il: Optional[str] = None
     ilce: Optional[str] = None
@@ -45,6 +46,7 @@ class KonutGuncelle(BaseModel):
     kod: Optional[str] = None
     ad: Optional[str] = None
     tur: Optional[models.KonutTur] = None
+    odeme_sorumlusu: Optional[models.OdemeSorumlusu] = None
     adres: Optional[str] = None
     il: Optional[str] = None
     ilce: Optional[str] = None
@@ -102,6 +104,8 @@ def konut_bilgi(db: Session, k: models.Konut) -> dict:
         "kod": k.kod,
         "ad": k.ad,
         "tur": k.tur.value if k.tur else None,
+        "kamp_mi": k.tur == models.KonutTur.kamp,
+        "odeme_sorumlusu": k.odeme_sorumlusu.value if k.odeme_sorumlusu else None,
         "adres": k.adres,
         "il": k.il,
         "ilce": k.ilce,
@@ -144,9 +148,19 @@ def konaklama_bilgi(kn: models.Konaklama) -> dict:
     }
 
 
-def _sonraki_kod(db: Session) -> str:
-    son = db.query(models.Konut).order_by(models.Konut.id.desc()).first()
-    return f"KNT-{(son.id + 1 if son else 1):03d}"
+def _sonraki_kod(db: Session, tur: models.KonutTur = None) -> str:
+    """Kamplara KMP-, diğer konutlara KNT- öneki verilir."""
+    onek = "KMP" if tur == models.KonutTur.kamp else "KNT"
+    son = db.query(models.Konut).filter(models.Konut.kod.like(f"{onek}-%")).order_by(
+        models.Konut.id.desc()).first()
+    if son:
+        try:
+            sira = int(son.kod.split("-")[1]) + 1
+        except (IndexError, ValueError):
+            sira = son.id + 1
+    else:
+        sira = 1
+    return f"{onek}-{sira:03d}"
 
 
 # ---------- Konut Endpoints ----------
@@ -154,6 +168,8 @@ def _sonraki_kod(db: Session) -> str:
 def konut_listesi(
     arama: Optional[str] = Query(None),
     tur: Optional[str] = Query(None),
+    kategori: Optional[str] = Query(None, description="'kamp' veya 'konut'"),
+    odeme_sorumlusu: Optional[str] = Query(None),
     durum: Optional[str] = Query(None),
     il: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -169,6 +185,14 @@ def konut_listesi(
         ))
     if tur:
         q = q.filter(models.Konut.tur == tur)
+    # Beyaz yaka kiralık evlerde, mavi yaka kamplarda kalıyor; iki liste
+    # arayüzde ayrı gösterildiği için tek parametreyle ayrılabiliyor.
+    if kategori == "kamp":
+        q = q.filter(models.Konut.tur == models.KonutTur.kamp)
+    elif kategori == "konut":
+        q = q.filter(models.Konut.tur != models.KonutTur.kamp)
+    if odeme_sorumlusu:
+        q = q.filter(models.Konut.odeme_sorumlusu == odeme_sorumlusu)
     if durum:
         q = q.filter(models.Konut.durum == durum)
     if il:
@@ -182,7 +206,7 @@ def konut_ekle(veri: KonutOlustur, db: Session = Depends(get_db), kullanici: mod
     _yetki(kullanici)
     data = veri.model_dump()
     if not data.get("kod"):
-        data["kod"] = _sonraki_kod(db)
+        data["kod"] = _sonraki_kod(db, veri.tur)
     if db.query(models.Konut).filter(models.Konut.kod == data["kod"]).first():
         raise HTTPException(status_code=400, detail="Bu kod zaten kayıtlı")
     k = models.Konut(**data)
@@ -391,12 +415,46 @@ def konaklama_ozet(db: Session = Depends(get_db), _: models.Kullanici = Depends(
     ]
     odenmemis = db.query(models.KonutGider).filter(models.KonutGider.odendi == False).all()
 
+    # Kamp ve kiralık ev ayrı raporlanır: mavi yaka kamplarda, beyaz yaka
+    # kiralık evlerde kalıyor ve kampların bir kısmının bedelini işveren
+    # karşıladığı için şirketin gider yükü farklı.
+    kamplar = [k for k in konutlar if k.tur == models.KonutTur.kamp]
+    evler = [k for k in konutlar if k.tur != models.KonutTur.kamp]
+    bykara_kamp = [k for k in kamplar if k.odeme_sorumlusu == models.OdemeSorumlusu.bykara]
+    isveren_kamp = [k for k in kamplar if k.odeme_sorumlusu == models.OdemeSorumlusu.isveren]
+
+    def _doluluk_topla(liste):
+        idler = [k.id for k in liste]
+        if not idler:
+            return 0
+        return db.query(models.Konaklama).filter(
+            models.Konaklama.aktif == True,
+            models.Konaklama.konut_id.in_(idler),
+        ).count()
+
     return {
         "konut_sayisi": len(konutlar),
         "toplam_kapasite": toplam_kapasite,
         "dolu_yatak": toplam_dolu,
         "bos_yatak": max(toplam_kapasite - toplam_dolu, 0),
         "doluluk_yuzde": round(toplam_dolu / toplam_kapasite * 100) if toplam_kapasite else 0,
+        "kamp": {
+            "sayi": len(kamplar),
+            "kapasite": sum(k.kapasite or 0 for k in kamplar),
+            "dolu": _doluluk_topla(kamplar),
+            "bykara_sayi": len(bykara_kamp),
+            "bykara_kapasite": sum(k.kapasite or 0 for k in bykara_kamp),
+            "bykara_dolu": _doluluk_topla(bykara_kamp),
+            "isveren_sayi": len(isveren_kamp),
+            "isveren_kapasite": sum(k.kapasite or 0 for k in isveren_kamp),
+            "isveren_dolu": _doluluk_topla(isveren_kamp),
+        },
+        "kiralik_ev": {
+            "sayi": len(evler),
+            "kapasite": sum(k.kapasite or 0 for k in evler),
+            "dolu": _doluluk_topla(evler),
+            "aylik_kira": sum(float(k.aylik_kira or 0) for k in evler),
+        },
         "aylik_kira_toplam": round(aylik_kira, 2),
         "odenmemis_gider_sayisi": len(odenmemis),
         "odenmemis_gider_tutar": round(sum(float(g.tutar) for g in odenmemis), 2),
