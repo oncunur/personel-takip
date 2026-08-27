@@ -908,6 +908,18 @@ html, body {
 .pt-hesap-kutu strong { font-size:16px; color:var(--primary); }
 .pt-hesap-kutu .hucre-alt { margin-left:var(--sp-s); font-size:11px; }
 
+/* Bordroda puantajdan aktarma kutusu */
+.bordro-puantaj-kutu {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-m);
+  background: var(--primary-light);
+  border-radius: var(--radius);
+  padding: var(--sp-s) var(--sp-m);
+  margin-bottom: var(--sp-s);
+}
+.bordro-puantaj-kutu strong { display: block; font-size: 13px; color: var(--text); }
+.bordro-puantaj-kutu .hucre-alt { margin: 0; }
+
 /* ── Bordro Modülü ───────────────────────────────────────────────── */
 .bordro-onizle-panel { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; padding:10px 13px; margin:8px 0; }
 .onizle-baslik { font-size:11px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px; }

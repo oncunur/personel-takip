@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import date
 from decimal import Decimal
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import models
 from database import get_db
-from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
+from routers.auth import aktif_kullanici, yonetici_mi, yonetici_yetkisi, kullanici_personeli
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/bordro", tags=["Bordro"])
@@ -142,6 +143,53 @@ def bordro_listesi(
     toplam = q.count()
     veriler = q.offset((sayfa - 1) * limit).limit(limit).all()
     return {"toplam": toplam, "veriler": [bordro_dict(b) for b in veriler]}
+
+
+@router.get("/puantaj-ozeti")
+def puantaj_ozeti(
+    personel_id: int = Query(...),
+    yil: int = Query(...),
+    ay: int = Query(..., ge=1, le=12),
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Bir personelin aylık puantaj özeti — bordroya girdi olarak kullanılır.
+
+    Bordro oluştururken çalışılan gün elle giriliyordu; bu uç sayesinde
+    puantaj cetvelinde işlenen veri doğrudan aktarılabiliyor.
+    """
+    import calendar
+    from routers.puantaj import calisilan_saat, GUNLUK_MESAI
+
+    p = db.query(models.Personel).filter(models.Personel.id == personel_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Personel bulunamadı")
+
+    gun_sayisi = calendar.monthrange(yil, ay)[1]
+    kayitlar = db.query(models.Puantaj).filter(
+        models.Puantaj.personel_id == personel_id,
+        models.Puantaj.tarih >= date(yil, ay, 1),
+        models.Puantaj.tarih <= date(yil, ay, gun_sayisi),
+    ).all()
+
+    calisilan_gun = sum(1 for k in kayitlar
+                        if k.durum in (models.PuantajDurum.tam, models.PuantajDurum.yarim))
+    toplam_saat = sum(calisilan_saat(k.durum, k.giris_saati, k.cikis_saati) for k in kayitlar)
+    fazla_mesai = sum(float(k.fazla_mesai or 0) for k in kayitlar)
+
+    return {
+        "personel_id": p.id,
+        "ad_soyad": f"{p.ad} {p.soyad}",
+        "baz_maas": float(p.maas) if p.maas else None,
+        "yil": yil, "ay": ay,
+        "kayit_sayisi": len(kayitlar),
+        "calisilan_gun": calisilan_gun,
+        "devamsiz_gun": sum(1 for k in kayitlar if k.durum == models.PuantajDurum.devamsiz),
+        "izinli_gun": sum(1 for k in kayitlar if k.durum == models.PuantajDurum.izinli),
+        "toplam_saat": round(toplam_saat, 2),
+        "fazla_mesai": round(fazla_mesai, 2),
+        "gunluk_mesai": GUNLUK_MESAI,
+    }
 
 
 @router.post("", status_code=201)

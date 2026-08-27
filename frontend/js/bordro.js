@@ -107,12 +107,19 @@ const BordroModul = (() => {
         <div class="form-group"><label>Baz Maaş (₺) *</label>
           <input type="number" name="baz_maas" id="bf-maas" step="0.01" required oninput="BordroModul.onizle()" />
         </div>
+        <div class="bordro-puantaj-kutu">
+          <div>
+            <strong>Puantajdan doldur</strong>
+            <span class="hucre-alt" id="bf-puantaj-bilgi">Seçilen personel ve dönemin puantaj verisini aktarır.</span>
+          </div>
+          <button type="button" class="btn-mini" id="bf-puantaj-btn" onclick="BordroModul.puantajdanDoldur()">Aktar</button>
+        </div>
         <div class="form-grid-2">
           <div class="form-group"><label>Çalışılan Gün</label>
-            <input type="number" name="calisilan_gun" value="22" min="1" max="31" oninput="BordroModul.onizle()" />
+            <input type="number" name="calisilan_gun" id="bf-gun" value="22" min="1" max="31" oninput="BordroModul.onizle()" />
           </div>
           <div class="form-group"><label>Fazla Mesai (saat)</label>
-            <input type="number" name="fazla_mesai_saat" value="0" min="0" step="0.5" oninput="BordroModul.onizle()" />
+            <input type="number" name="fazla_mesai_saat" id="bf-fm" value="0" min="0" step="0.5" oninput="BordroModul.onizle()" />
           </div>
         </div>
         <div class="form-grid-2">
@@ -234,6 +241,42 @@ const BordroModul = (() => {
           yukleVeRender();
         } catch(err) { hata.textContent = err.message; hata.classList.remove('gizli'); }
       });
+    },
+
+    // Bordro çalışılan günü elle isteniyordu; puantajda işlenmiş veri
+    // varken onu yeniden girmek hem zaman kaybı hem hata kaynağı.
+    async puantajdanDoldur() {
+      const form = document.getElementById('bordro-form');
+      const pid = form.querySelector('[name=personel_id]').value;
+      const yil = form.querySelector('[name=yil]').value;
+      const ay = form.querySelector('[name=ay]').value;
+      const bilgi = document.getElementById('bf-puantaj-bilgi');
+      const btn = document.getElementById('bf-puantaj-btn');
+
+      if (!pid) { bilgi.textContent = 'Önce personel seçin.'; return; }
+
+      btn.disabled = true;
+      try {
+        const o = await apiFetch(`/bordro/puantaj-ozeti?personel_id=${pid}&yil=${yil}&ay=${ay}`);
+        if (!o.kayit_sayisi) {
+          bilgi.textContent = 'Bu dönemde puantaj kaydı yok.';
+          return;
+        }
+        document.getElementById('bf-gun').value = o.calisilan_gun;
+        document.getElementById('bf-fm').value = o.fazla_mesai;
+        if (o.baz_maas && !document.getElementById('bf-maas').value) {
+          document.getElementById('bf-maas').value = o.baz_maas;
+        }
+        const saat = o.toplam_saat % 1 === 0 ? o.toplam_saat : o.toplam_saat.toFixed(1).replace('.', ',');
+        bilgi.textContent = `${o.calisilan_gun} gün · ${saat} saat aktarıldı`
+          + (o.devamsiz_gun ? ` · ${o.devamsiz_gun} devamsız` : '')
+          + (o.izinli_gun ? ` · ${o.izinli_gun} izinli` : '');
+        this.onizle();
+      } catch (err) {
+        bilgi.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
     },
 
     personelSecildi(sel) {
