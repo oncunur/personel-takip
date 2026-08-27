@@ -448,6 +448,21 @@ def fatura_isle(kid: int, veri: FaturaIsle, db: Session = Depends(get_db),
     if not kn:
         raise HTTPException(status_code=404, detail="Konaklama kaydı bulunamadı")
 
+    # Faturalar oda başına ayrı geldiği için bir fatura numarası tek
+    # konaklamaya işlenir; aynı numaranın ikinci kez girilmesi tutarın
+    # çift sayılmasına yol açar.
+    ayni = db.query(models.Konaklama).filter(
+        models.Konaklama.fatura_no == veri.fatura_no,
+        models.Konaklama.id != kid,
+    ).first()
+    if ayni:
+        kisi = f"{ayni.personel.ad} {ayni.personel.soyad}" if ayni.personel else "başka bir kayıt"
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{veri.fatura_no}' numaralı fatura zaten {kisi} için işlenmiş "
+                   f"({ayni.giris_tarihi} girişli konaklama).",
+        )
+
     onceki = _konaklama_maliyeti(kn)
     kn.fatura_no = veri.fatura_no
     kn.fatura_tarihi = veri.fatura_tarihi

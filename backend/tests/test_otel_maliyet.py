@@ -168,3 +168,45 @@ def test_konaklama_guncellenebilir(client, token, kullanici_olustur, otel, kisi)
         "oda_no": "07", "pansiyon": "HB", "gecelik_ucret": 3500})
     assert r.status_code == 200
     assert r.json()["oda_no"] == "07" and r.json()["gecelik_ucret"] == 3500.0
+
+
+# ─── Mükerrer fatura ─────────────────────────────────────────────────
+
+def test_ayni_fatura_ikinci_kez_islenemez(client, token, kullanici_olustur,
+                                           db_session, otel, kisi):
+    """Faturalar oda başına ayrı gelir; aynı numara tek konaklamaya işlenir."""
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    h = token("mudur")
+
+    k1 = kayit_olustur(client, h, otel, kisi, cikis_tarihi="2026-08-24").json()
+    client.post(f"/konaklama/kayitlar/{k1['id']}/fatura", headers=h, json={
+        "fatura_no": "LDE2026000000215", "fatura_tarihi": "2026-08-24",
+        "fatura_tutari": 29700})
+
+    # İkinci bir kişi, aynı fatura numarası
+    p2 = models.Personel(ad="Aziz", soyad="Karimov", email="aziz2@sirket.com")
+    db_session.add(p2); db_session.commit(); db_session.refresh(p2)
+    k2 = client.post("/konaklama/kayitlar", headers=h, json={
+        "konut_id": otel.id, "personel_id": p2.id,
+        "giris_tarihi": "2026-08-15", "cikis_tarihi": "2026-08-24"}).json()
+
+    r = client.post(f"/konaklama/kayitlar/{k2['id']}/fatura", headers=h, json={
+        "fatura_no": "LDE2026000000215", "fatura_tarihi": "2026-08-24",
+        "fatura_tutari": 29700})
+    assert r.status_code == 400
+    assert "zaten" in r.json()["detail"]
+    assert "Iasin" in r.json()["detail"]        # kimde olduğu söylenir
+
+
+def test_ayni_kaydin_faturasi_duzeltilebilir(client, token, kullanici_olustur, otel, kisi):
+    """Yanlış girilen tutar aynı fatura numarasıyla düzeltilebilmeli."""
+    kullanici_olustur("mudur", models.Rol.yonetici)
+    h = token("mudur")
+    k = kayit_olustur(client, h, otel, kisi, cikis_tarihi="2026-08-24").json()
+
+    client.post(f"/konaklama/kayitlar/{k['id']}/fatura", headers=h, json={
+        "fatura_no": "LDE-1", "fatura_tarihi": "2026-08-24", "fatura_tutari": 29000})
+    r = client.post(f"/konaklama/kayitlar/{k['id']}/fatura", headers=h, json={
+        "fatura_no": "LDE-1", "fatura_tarihi": "2026-08-24", "fatura_tutari": 29700})
+    assert r.status_code == 200
+    assert r.json()["tutar"] == 29700.0
