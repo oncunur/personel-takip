@@ -386,6 +386,8 @@ const KonaklamaModul = (() => {
           const s = await O.api('/konaklama/kayitlar', { method: 'POST', body: JSON.stringify(veri) });
           await veriYukle();
           O.modalKapat(); render();
+          // Yerleştirme yaka tipiyle uyuşmuyorsa kayıt yapılır ama uyarılır
+          if (s && s.uyari) alert('Kayıt oluşturuldu.\n\nDikkat: ' + s.uyari);
         } catch (err) { O.hataGoster(err.message); }
       };
     },

@@ -9,12 +9,16 @@ const PersonelModul = (() => {
   let aramaTxt = '';
   let filtreDepartman = '';
   let filtreDurum = '';
+  let filtreYaka = '';
   let duzenleId = null;
 
 
   const durumRenk = { aktif:'#00802F', pasif:'#8C8C94', izinli:'#855900' };
   const durumEtiket = { aktif:'Aktif', pasif:'Pasif', izinli:'İzinli' };
   const cinsiyetEtiket = { erkek:'Erkek', kadin:'Kadın', belirtilmemis:'—' };
+  // Konaklama düzeni bu ayrıma göre kurulur: beyaz yaka kiralık ev, mavi yaka kamp
+  const yakaEtiket = { beyaz:'Beyaz yaka', mavi:'Mavi yaka' };
+  const yakaRenk = { beyaz:'#006CE0', mavi:'#855900' };
 
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
@@ -50,6 +54,7 @@ const PersonelModul = (() => {
     if (aramaTxt) params.set('arama', aramaTxt);
     if (filtreDepartman) params.set('departman_id', filtreDepartman);
     if (filtreDurum) params.set('durum', filtreDurum);
+    if (filtreYaka) params.set('yaka', filtreYaka);
 
     const data = await apiFetch(`/personel?${params}`);
     const liste = data.veriler;
@@ -61,7 +66,7 @@ const PersonelModul = (() => {
     const tbody = document.getElementById('personel-tbody');
     if (!tbody) return;
     if (!liste.length) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
       document.getElementById('personel-toplam').textContent = '0 personel';
       return;
     }
@@ -78,6 +83,7 @@ const PersonelModul = (() => {
           </div>
         </td>
         <td><span style="color:var(--gray-700)">${K(p.pozisyon)}</span></td>
+        <td>${p.yaka ? `<span class="durum-badge" style="background:${yakaRenk[p.yaka]}1f;color:${yakaRenk[p.yaka]}">${yakaEtiket[p.yaka]}</span>` : '—'}</td>
         <td><span class="departman-chip">${K(p.departman_ad)}</span></td>
         <td>${p.uyruk ? `<span class="uyruk-etiket" title="${Ortak.kacir(p.uyruk_ad || '')}">${Ortak.kacir(p.uyruk)}</span>` : '—'}</td>
         <td>${K(p.telefon)}</td>
@@ -116,6 +122,11 @@ const PersonelModul = (() => {
             <option value="">Tüm Departmanlar</option>
             ${departmanlar.map(d => `<option value="${d.id}" ${filtreDepartman==d.id?'selected':''}>${d.ad}</option>`).join('')}
           </select>
+          <select id="filtre-yaka" class="filtre-select">
+            <option value="">Tüm Yakalar</option>
+            <option value="beyaz" ${filtreYaka==='beyaz'?'selected':''}>Beyaz yaka</option>
+            <option value="mavi" ${filtreYaka==='mavi'?'selected':''}>Mavi yaka</option>
+          </select>
           <select id="filtre-durum" class="filtre-select">
             <option value="">Tüm Durumlar</option>
             <option value="aktif" ${filtreDurum==='aktif'?'selected':''}>Aktif</option>
@@ -136,11 +147,11 @@ const PersonelModul = (() => {
         <table class="personel-tablo">
           <thead>
             <tr>
-              <th>Personel</th><th>Pozisyon</th><th>Departman</th><th>Uyruk</th><th>Telefon</th><th>Durum</th><th>İşlemler</th>
+              <th>Personel</th><th>Pozisyon</th><th>Yaka</th><th>Departman</th><th>Uyruk</th><th>Telefon</th><th>Durum</th><th>İşlemler</th>
             </tr>
           </thead>
           <tbody id="personel-tbody">
-            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Yükleniyor...</td></tr>
           </tbody>
         </table>
       </div>
@@ -164,6 +175,11 @@ const PersonelModul = (() => {
     });
     document.getElementById('filtre-departman').addEventListener('change', e => {
       filtreDepartman = e.target.value;
+      mevcutSayfa = 1;
+      listeyiYukle();
+    });
+    document.getElementById('filtre-yaka').addEventListener('change', e => {
+      filtreYaka = e.target.value;
       mevcutSayfa = 1;
       listeyiYukle();
     });
@@ -239,6 +255,12 @@ const PersonelModul = (() => {
         <div class="form-bolum-baslik">Görev Bilgileri</div>
         <div class="form-grid-2">
           <div class="form-group"><label>Pozisyon</label><input name="pozisyon" value="${p.pozisyon||''}" placeholder="Yazılım Geliştirici" /></div>
+          <div class="form-group"><label>Yaka</label>
+            <select name="yaka">
+              <option value="">Belirtilmemiş</option>
+              <option value="beyaz" ${p.yaka==='beyaz'?'selected':''}>Beyaz yaka (ofis / idari)</option>
+              <option value="mavi" ${p.yaka==='mavi'?'selected':''}>Mavi yaka (saha / şantiye)</option>
+            </select></div>
           <div class="form-group"><label>Cinsiyet</label>
             <select name="cinsiyet">
               <option value="belirtilmemis" ${(!p.cinsiyet||p.cinsiyet==='belirtilmemis')?'selected':''}>Belirtilmemiş</option>
@@ -399,6 +421,7 @@ const PersonelModul = (() => {
           ${p.ikamet_izni_bitis ? `<div class="detay-satir"><span>İkamet İzni Bitiş</span><strong>${K(p.ikamet_izni_bitis)}</strong></div>` : ''}
           <div class="detay-satir"><span>Departman</span><strong>${K(p.departman_ad)}</strong></div>
           <div class="detay-satir"><span>Pozisyon</span><strong>${K(p.pozisyon)}</strong></div>
+          <div class="detay-satir"><span>Yaka</span><strong>${p.yaka ? yakaEtiket[p.yaka] : '—'}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${durumRenk[p.durum]}22;color:${durumRenk[p.durum]}">${durumEtiket[p.durum]}</span></div>
           <div class="detay-satir"><span>Cinsiyet</span><strong>${cinsiyetEtiket[p.cinsiyet]||'—'}</strong></div>
           <div class="detay-satir"><span>İşe Başlama</span><strong>${K(p.ise_baslama_tarihi)}</strong></div>

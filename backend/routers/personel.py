@@ -104,6 +104,7 @@ class PersonelOlustur(KimlikKarma):
     ise_baslama_tarihi: Optional[date] = None
     dogum_tarihi: Optional[date] = None
     cinsiyet: models.Cinsiyet = models.Cinsiyet.belirtilmemis
+    yaka: Optional[models.Yaka] = None
     adres: Optional[str] = None
     maas: Optional[Decimal] = None
     notlar: Optional[str] = None
@@ -127,6 +128,7 @@ class PersonelGuncelle(KimlikKarma):
     ise_baslama_tarihi: Optional[date] = None
     dogum_tarihi: Optional[date] = None
     cinsiyet: Optional[models.Cinsiyet] = None
+    yaka: Optional[models.Yaka] = None
     adres: Optional[str] = None
     durum: Optional[models.PersonelDurum] = None
     maas: Optional[Decimal] = None
@@ -153,6 +155,7 @@ class PersonelBilgi(BaseModel):
     ise_baslama_tarihi: Optional[date]
     dogum_tarihi: Optional[date]
     cinsiyet: models.Cinsiyet
+    yaka: Optional[models.Yaka]
     adres: Optional[str]
     durum: models.PersonelDurum
     maas: Optional[Decimal]
@@ -196,6 +199,7 @@ def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
         "ise_baslama_tarihi": str(p.ise_baslama_tarihi) if p.ise_baslama_tarihi else None,
         "dogum_tarihi": str(p.dogum_tarihi) if p.dogum_tarihi else None,
         "cinsiyet": p.cinsiyet,
+        "yaka": p.yaka.value if p.yaka else None,
         "adres": p.adres,
         "durum": p.durum,
         "maas": float(p.maas) if p.maas else None,
@@ -315,6 +319,7 @@ def personel_listesi(
     departman_id: Optional[int] = Query(None),
     durum: Optional[str] = Query(None),
     uyruk: Optional[str] = Query(None),
+    yaka: Optional[str] = Query(None),
     sayfa: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -343,6 +348,8 @@ def personel_listesi(
         q = q.filter(models.Personel.durum == durum)
     if uyruk:
         q = q.filter(models.Personel.uyruk == uyruk)
+    if yaka:
+        q = q.filter(models.Personel.yaka == yaka)
     toplam = q.count()
     personeller = q.offset((sayfa - 1) * limit).limit(limit).all()
 

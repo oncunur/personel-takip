@@ -305,7 +305,30 @@ def konaklama_ekle(veri: KonaklamaOlustur, db: Session = Depends(get_db), kullan
 
     kn = models.Konaklama(**veri.model_dump())
     db.add(kn); db.commit(); db.refresh(kn)
-    return konaklama_bilgi(kn)
+
+    sonuc = konaklama_bilgi(kn)
+    sonuc["uyari"] = _yaka_uyumu(personel, konut)
+    return sonuc
+
+
+def _yaka_uyumu(personel, konut) -> Optional[str]:
+    """Yerleştirme, çalışanın yaka tipiyle uyuşmuyorsa uyarı metni döner.
+
+    Kural katı değil: beyaz yaka kiralık evlerde, mavi yaka kamplarda
+    kalır ama istisnalar olabilir. Bu yüzden kayıt engellenmez,
+    yalnızca dikkat çekilir.
+    """
+    if not personel.yaka:
+        return None
+
+    kamp_mi = konut.tur == models.KonutTur.kamp
+    if personel.yaka == models.Yaka.mavi and not kamp_mi:
+        return (f"{personel.ad} {personel.soyad} mavi yaka; genellikle kampta kalır. "
+                f"'{konut.ad}' bir kiralık konut.")
+    if personel.yaka == models.Yaka.beyaz and kamp_mi:
+        return (f"{personel.ad} {personel.soyad} beyaz yaka; genellikle kiralık evde kalır. "
+                f"'{konut.ad}' bir kamp.")
+    return None
 
 
 @router.post("/kayitlar/{kid}/cikis")

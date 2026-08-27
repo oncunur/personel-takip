@@ -11,6 +11,16 @@ class Rol(str, enum.Enum):
     personel = "personel"
 
 
+class Yaka(str, enum.Enum):
+    """Çalışanın görev tipi.
+
+    Konaklama düzeni bu ayrıma göre kurulur: beyaz yaka kiralık
+    evlerde, mavi yaka kamplarda kalır.
+    """
+    beyaz = "beyaz"    # ofis, idari, mühendislik
+    mavi  = "mavi"     # saha, şantiye
+
+
 class PersonelDurum(str, enum.Enum):
     aktif = "aktif"
     pasif = "pasif"
@@ -66,6 +76,7 @@ class Personel(Base):
     ise_baslama_tarihi = Column(Date, nullable=True)
     dogum_tarihi = Column(Date, nullable=True)
     cinsiyet = Column(Enum(Cinsiyet), default=Cinsiyet.belirtilmemis)
+    yaka = Column(Enum(Yaka), nullable=True, index=True)
     adres = Column(String, nullable=True)
     durum = Column(Enum(PersonelDurum), default=PersonelDurum.aktif)
     maas = Column(Numeric(12, 2), nullable=True)
