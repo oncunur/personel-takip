@@ -37,9 +37,12 @@ def aylik_ozet(
     for pt in puantajlar:
         pid = pt.personel_id
         if pid not in puantaj_map:
-            puantaj_map[pid] = {"calisilan_gun": 0, "devamsiz_gun": 0, "izinli_gun": 0, "fazla_mesai": 0.0}
-        if pt.durum in (models.PuantajDurum.tam, models.PuantajDurum.yarim):
+            puantaj_map[pid] = {"calisilan_gun": 0.0, "devamsiz_gun": 0, "izinli_gun": 0, "fazla_mesai": 0.0}
+        if pt.durum == models.PuantajDurum.tam:
             puantaj_map[pid]["calisilan_gun"] += 1
+        elif pt.durum == models.PuantajDurum.yarim:
+            # Yarım gün ücrete yarım gün olarak girer
+            puantaj_map[pid]["calisilan_gun"] += 0.5
         elif pt.durum == models.PuantajDurum.devamsiz:
             puantaj_map[pid]["devamsiz_gun"] += 1
         elif pt.durum == models.PuantajDurum.izinli:
@@ -57,7 +60,7 @@ def aylik_ozet(
 
     result = []
     for p in personeller:
-        pt = puantaj_map.get(p.id, {"calisilan_gun": 0, "devamsiz_gun": 0, "izinli_gun": 0, "fazla_mesai": 0.0})
+        pt = puantaj_map.get(p.id, {"calisilan_gun": 0.0, "devamsiz_gun": 0, "izinli_gun": 0, "fazla_mesai": 0.0})
         b = bordro_map.get(p.id)
         result.append({
             "personel_id": p.id,
@@ -66,7 +69,7 @@ def aylik_ozet(
             "departman": p.departman.ad if p.departman else None,
             "pozisyon": p.pozisyon,
             "baz_maas": float(p.maas or 0),
-            "calisilan_gun": pt["calisilan_gun"],
+            "calisilan_gun": round(pt["calisilan_gun"], 2),
             "devamsiz_gun": pt["devamsiz_gun"],
             "izinli_gun": pt["izinli_gun"],
             "fazla_mesai": round(pt["fazla_mesai"], 2),

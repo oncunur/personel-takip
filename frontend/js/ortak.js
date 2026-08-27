@@ -62,6 +62,14 @@ const Ortak = (() => {
     return `<span style="color:var(--gray-500)">${gun} gün</span>`;
   }
 
+  // Yarım günler 0,5 sayıldığı için gün sayısı kesirli olabiliyor;
+  // tam sayıysa ondalık gösterilmiyor.
+  function gun(n) {
+    if (n === null || n === undefined || n === '') return '—';
+    const s = Number(n);
+    return (Number.isInteger(s) ? s : s.toFixed(1).replace('.', ',')) + ' gün';
+  }
+
   function statGrid(kartlar) {
     return `<div class="idari-stat-grid">${kartlar.map(k => `
       <div class="idari-stat" style="--vurgu:${k.renk || 'var(--primary)'}">
@@ -206,7 +214,7 @@ const Ortak = (() => {
   });
 
   return {
-    api, tl, tlTam, sayi, tarih, saatli, bugun, kacir, yonetici, rozet, kalanRozet,
+    api, tl, tlTam, sayi, gun, tarih, saatli, bugun, kacir, yonetici, rozet, kalanRozet,
     statGrid, sekmeler, bosSatir, doluluk, modalAc, modalKapat, formVeri, hataGoster,
     formHata, modalFooter, secenekler, enumSecenek, personeller, icerik,
     opsiyonelSutunlariEsle, islemBasligiEsle,

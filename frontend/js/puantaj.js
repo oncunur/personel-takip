@@ -180,7 +180,7 @@ const PuantajModul = (() => {
                   <strong>${Ortak.kacir(s.ad_soyad)}</strong>
                 </td>
                 ${gunler.map(g => hucre(s, g)).join('')}
-                <td class="pt-toplam">${s.calisilan}</td>
+                <td class="pt-toplam">${gunYaz(s.calisilan)}</td>
                 <td class="pt-toplam${s.devamsiz ? ' pt-uyari' : ''}">${s.devamsiz}</td>
                 <td class="pt-toplam">${s.izinli}</td>
                 <td class="pt-toplam pt-saat-toplam">${saatMetni(s.toplam_saat || 0)}</td>
@@ -196,7 +196,7 @@ const PuantajModul = (() => {
                   title="${g.gun} ${AYLAR[secilenAy-1]} · toplam ${saatMetni(gunToplam)} saat"
                   >${gunToplam ? saatMetni(gunToplam) : ''}</td>`;
               }).join('')}
-              <td class="pt-toplam">${personeller.reduce((t, s) => t + s.calisilan, 0)}</td>
+              <td class="pt-toplam">${gunYaz(personeller.reduce((t, s) => t + s.calisilan, 0))}</td>
               <td class="pt-toplam">${personeller.reduce((t, s) => t + s.devamsiz, 0)}</td>
               <td class="pt-toplam">${personeller.reduce((t, s) => t + s.izinli, 0)}</td>
               <td class="pt-toplam pt-saat-toplam">${saatMetni(personeller.reduce((t, s) => t + (s.toplam_saat || 0), 0))}</td>
@@ -244,6 +244,11 @@ const PuantajModul = (() => {
 
   // Sunucudaki hesabın aynısı: saat girilmişse farktan mola düşülür,
   // girilmemişse duruma göre standart süre sayılır.
+  // Yarım günler 0,5 sayıldığından toplam kesirli olabiliyor
+  function gunYaz(n) {
+    return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
+  }
+
   function hucreSaati(h) {
     if (!h.durum || ['devamsiz', 'izinli', 'resmi_tatil', 'hafta_sonu'].includes(h.durum)) return 0;
     const dk = t => { if (!t) return null; const [a, b] = String(t).split(':'); const s = +a + (+b) / 60; return isNaN(s) ? null : s; };
@@ -259,7 +264,8 @@ const PuantajModul = (() => {
   function toplamlariTazele(satir) {
     const hucreler = Object.values(satir.gunler);
     const durumlar = hucreler.map(h => h.durum);
-    satir.calisilan = durumlar.filter(d => d === 'tam' || d === 'yarim').length;
+    satir.calisilan = durumlar.reduce(
+      (t, d) => t + (d === 'tam' ? 1 : d === 'yarim' ? 0.5 : 0), 0);
     satir.devamsiz  = durumlar.filter(d => d === 'devamsiz').length;
     satir.izinli    = durumlar.filter(d => d === 'izinli').length;
     satir.toplam_saat = Math.round(hucreler.reduce((t, h) => t + hucreSaati(h), 0) * 100) / 100;
@@ -267,7 +273,7 @@ const PuantajModul = (() => {
     const tr = document.querySelector(`.pt-hucre[data-pid="${satir.personel_id}"]`)?.closest('tr');
     if (!tr) return;
     const toplamlar = tr.querySelectorAll('.pt-toplam');
-    toplamlar[0].textContent = satir.calisilan;
+    toplamlar[0].textContent = gunYaz(satir.calisilan);
     toplamlar[1].textContent = satir.devamsiz;
     toplamlar[1].classList.toggle('pt-uyari', satir.devamsiz > 0);
     toplamlar[2].textContent = satir.izinli;
@@ -286,7 +292,7 @@ const PuantajModul = (() => {
       if (hucreler[i]) hucreler[i].textContent = t ? saatMetni(t) : '';
     });
     const toplamlar = tfoot.querySelectorAll('.pt-toplam');
-    toplamlar[0].textContent = p.reduce((t, s) => t + s.calisilan, 0);
+    toplamlar[0].textContent = gunYaz(p.reduce((t, s) => t + s.calisilan, 0));
     toplamlar[1].textContent = p.reduce((t, s) => t + s.devamsiz, 0);
     toplamlar[2].textContent = p.reduce((t, s) => t + s.izinli, 0);
     toplamlar[3].textContent = saatMetni(p.reduce((t, s) => t + (s.toplam_saat || 0), 0));

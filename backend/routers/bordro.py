@@ -56,7 +56,7 @@ def ay_is_gunu(yil: int, ay: int) -> int:
 
 
 def bordro_hesapla(baz_maas: Decimal, fazla_mesai_saat: Decimal,
-                   prim: Decimal, diger: Decimal, calisilan_gun: int,
+                   prim: Decimal, diger: Decimal, calisilan_gun: float,
                    ay_gunu: Optional[int] = None) -> dict:
     # Ayı tam çalışan tam maaşını alır; eksik gün oranla düşülür.
     bolen = Decimal(str(ay_gunu)) if ay_gunu else Decimal("26")
@@ -103,7 +103,7 @@ def bordro_dict(b: models.Bordro) -> dict:
         "gelir_vergisi": float(b.gelir_vergisi),
         "damga_vergisi": float(b.damga_vergisi),
         "net_maas": float(b.net_maas),
-        "calisilan_gun": b.calisilan_gun,
+        "calisilan_gun": float(b.calisilan_gun) if b.calisilan_gun is not None else None,
         "fazla_mesai_saat": float(b.fazla_mesai_saat),
         "durum": b.durum,
         "notlar": b.notlar,
@@ -117,7 +117,7 @@ class BordroOlustur(BaseModel):
     baz_maas: Decimal
     prim: Decimal = Decimal("0")
     diger_eklemeler: Decimal = Decimal("0")
-    calisilan_gun: Optional[int] = None   # verilmezse ayın tamamı çalışılmış sayılır
+    calisilan_gun: Optional[float] = None   # verilmezse ayın tamamı çalışılmış sayılır
     fazla_mesai_saat: Decimal = Decimal("0")
     notlar: Optional[str] = None
 
@@ -125,7 +125,7 @@ class BordroOlustur(BaseModel):
 class BordroGuncelle(BaseModel):
     prim: Optional[Decimal] = None
     diger_eklemeler: Optional[Decimal] = None
-    calisilan_gun: Optional[int] = None
+    calisilan_gun: Optional[float] = None
     fazla_mesai_saat: Optional[Decimal] = None
     durum: Optional[models.BordroDurum] = None
     notlar: Optional[str] = None
@@ -176,7 +176,7 @@ def puantaj_ozeti(
     puantaj cetvelinde işlenen veri doğrudan aktarılabiliyor.
     """
     import calendar
-    from routers.puantaj import calisilan_saat, GUNLUK_MESAI
+    from routers.puantaj import calisilan_saat, gun_esdegeri, GUNLUK_MESAI
 
     p = db.query(models.Personel).filter(models.Personel.id == personel_id).first()
     if not p:
@@ -189,8 +189,7 @@ def puantaj_ozeti(
         models.Puantaj.tarih <= date(yil, ay, gun_sayisi),
     ).all()
 
-    calisilan_gun = sum(1 for k in kayitlar
-                        if k.durum in (models.PuantajDurum.tam, models.PuantajDurum.yarim))
+    calisilan_gun = gun_esdegeri(k.durum for k in kayitlar)
     toplam_saat = sum(calisilan_saat(k.durum, k.giris_saati, k.cikis_saati) for k in kayitlar)
     fazla_mesai = sum(float(k.fazla_mesai or 0) for k in kayitlar)
 
@@ -254,7 +253,7 @@ def bordro_onizle(
     fazla_mesai_saat: Decimal = Query(default=0),
     prim: Decimal = Query(default=0),
     diger: Decimal = Query(default=0),
-    calisilan_gun: Optional[int] = Query(default=None),
+    calisilan_gun: Optional[float] = Query(default=None),
     yil: Optional[int] = Query(default=None),
     ay: Optional[int] = Query(default=None, ge=1, le=12),
     _: models.Kullanici = Depends(aktif_kullanici),

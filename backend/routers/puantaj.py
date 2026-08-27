@@ -68,6 +68,22 @@ def calisilan_saat(durum, giris: Optional[str], cikis: Optional[str]) -> float:
     return GUNLUK_MESAI if durum == models.PuantajDurum.tam else YARIM_GUN
 
 
+def gun_esdegeri(durumlar) -> float:
+    """Çalışılan gün sayısı — yarım günler 0,5 sayılır.
+
+    Ücrete esas gün budur; yarım günü tam saymak yarım günlük fazla
+    ödemeye yol açıyordu. Durum hem enum hem düz metin gelebiliyor.
+    """
+    toplam = 0.0
+    for d in durumlar:
+        ad = d.value if hasattr(d, "value") else d
+        if ad == "tam":
+            toplam += 1.0
+        elif ad == "yarim":
+            toplam += 0.5
+    return round(toplam, 2)
+
+
 class PuantajKayit(BaseModel):
     personel_id: int
     tarih: date
@@ -143,7 +159,7 @@ def aylik_puantaj(
     for g in gunler:
         g["saat"] = calisilan_saat(g["durum"], g["giris_saati"], g["cikis_saati"])
 
-    calisilan = sum(1 for g in gunler if g["durum"] in ["tam", "yarim"])
+    calisilan = gun_esdegeri(g["durum"] for g in gunler)
     devamsiz  = sum(1 for g in gunler if g["durum"] == "devamsiz")
     izinli    = sum(1 for g in gunler if g["durum"] == "izinli")
     toplam_fazla = sum(g["fazla_mesai"] or 0 for g in gunler)
@@ -298,7 +314,7 @@ def aylik_cetvel(
             "ad_soyad": f"{p.ad} {p.soyad}",
             "departman": p.departman.ad if p.departman else None,
             "gunler": hucreler,
-            "calisilan": sum(1 for d in durumlar if d in (models.PuantajDurum.tam, models.PuantajDurum.yarim)),
+            "calisilan": gun_esdegeri(durumlar),
             "devamsiz": sum(1 for d in durumlar if d == models.PuantajDurum.devamsiz),
             "izinli": sum(1 for d in durumlar if d == models.PuantajDurum.izinli),
             "toplam_saat": round(sum(h["saat"] for h in hucreler.values()), 2),

@@ -135,7 +135,7 @@ class Bordro(Base):
     gelir_vergisi   = Column(Numeric(12, 2), nullable=False)
     damga_vergisi   = Column(Numeric(12, 2), nullable=False)   # %0.759
     net_maas        = Column(Numeric(12, 2), nullable=False)
-    calisilan_gun   = Column(Integer, default=0)
+    calisilan_gun   = Column(Numeric(5, 2), default=0)   # yarım günler 0,5
     fazla_mesai_saat = Column(Numeric(6, 2), default=0)
     durum           = Column(Enum(BordroDurum), default=BordroDurum.taslak)
     notlar          = Column(String, nullable=True)

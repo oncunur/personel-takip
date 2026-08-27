@@ -45,7 +45,7 @@ const BordroModul = (() => {
           <div style="font-size:12px;color:var(--gray-400)">${Ortak.kacir(b.personel_departman || '')}</div>
         </td>
         <td style="font-size:13px">${AYLAR[b.ay-1]} ${b.yil}</td>
-        <td class="sayi" style="font-size:13px">${b.calisilan_gun ?? '—'} gün</td>
+        <td class="sayi" style="font-size:13px">${Ortak.gun(b.calisilan_gun)}</td>
         <td class="sayi" style="font-size:13px;color:#00802F;font-weight:600">${tl(b.brut_maas)}</td>
         <td>
           <div style="font-size:12px;color:var(--gray-500)">SGK: ${tl(b.sgk_isci)}</div>
@@ -116,7 +116,7 @@ const BordroModul = (() => {
         </div>
         <div class="form-grid-2">
           <div class="form-group"><label>Çalışılan Gün</label>
-            <input type="number" name="calisilan_gun" id="bf-gun" value="22" min="1" max="31" oninput="BordroModul.onizle()" />
+            <input type="number" name="calisilan_gun" id="bf-gun" step="0.5" min="0" max="31" placeholder="ayın tamamı" oninput="BordroModul.onizle()" />
           </div>
           <div class="form-group"><label>Fazla Mesai (saat)</label>
             <input type="number" name="fazla_mesai_saat" id="bf-fm" value="0" min="0" step="0.5" oninput="BordroModul.onizle()" />
@@ -230,7 +230,7 @@ const BordroModul = (() => {
           baz_maas: parseFloat(fd.get('baz_maas')),
           prim: parseFloat(fd.get('prim')) || 0,
           diger_eklemeler: parseFloat(fd.get('diger_eklemeler')) || 0,
-          calisilan_gun: parseInt(fd.get('calisilan_gun')) || 22,
+          calisilan_gun: parseFloat(fd.get('calisilan_gun')) || null,
           fazla_mesai_saat: parseFloat(fd.get('fazla_mesai_saat')) || 0,
           notlar: fd.get('notlar') || null,
         };
@@ -268,7 +268,7 @@ const BordroModul = (() => {
           document.getElementById('bf-maas').value = o.baz_maas;
         }
         const saat = o.toplam_saat % 1 === 0 ? o.toplam_saat : o.toplam_saat.toFixed(1).replace('.', ',');
-        bilgi.textContent = `${o.calisilan_gun} gün · ${saat} saat aktarıldı`
+        bilgi.textContent = `${Ortak.gun(o.calisilan_gun)} · ${saat} saat aktarıldı`
           + (o.devamsiz_gun ? ` · ${o.devamsiz_gun} devamsız` : '')
           + (o.izinli_gun ? ` · ${o.izinli_gun} izinli` : '');
         this.onizle();
@@ -296,7 +296,7 @@ const BordroModul = (() => {
         const yil = parseInt(document.querySelector('[name="yil"]')?.value) || new Date().getFullYear();
         const ay = parseInt(document.querySelector('[name="ay"]')?.value) || new Date().getMonth() + 1;
         const ayGunu = ayIsGunu(yil, ay);
-        const gun = parseInt(document.querySelector('[name="calisilan_gun"]')?.value) || ayGunu;
+        const gun = parseFloat(document.querySelector('[name="calisilan_gun"]')?.value) || ayGunu;
 
         const res = await apiFetch(`/bordro/hesapla?baz_maas=${maas}&fazla_mesai_saat=${fm}&prim=${prim}&diger=${diger}&calisilan_gun=${gun}&yil=${yil}&ay=${ay}`)
           || _localHesapla(maas, fm, prim, diger, gun, ayGunu);
@@ -330,7 +330,7 @@ const BordroModul = (() => {
           <div class="detay-satir"><span>Gelir Vergisi</span><span style="color:#DB0000">- ${tl(b.gelir_vergisi)}</span></div>
           <div class="detay-satir"><span>Damga Vergisi</span><span style="color:#DB0000">- ${tl(b.damga_vergisi)}</span></div>
           <div class="detay-satir" style="font-size:17px;font-weight:700"><span>Net Maaş</span><strong style="color:var(--primary)">${tl(b.net_maas)}</strong></div>
-          <div class="detay-satir"><span>Çalışılan Gün</span><strong>${b.calisilan_gun}</strong></div>
+          <div class="detay-satir"><span>Çalışılan Gün</span><strong>${Ortak.gun(b.calisilan_gun)}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${DURUM_RENK[b.durum]}22;color:${DURUM_RENK[b.durum]}">${DURUM_ETIKET[b.durum]}</span></div>
           ${b.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${Ortak.kacir(b.notlar)}</strong></div>` : ''}
         </div>

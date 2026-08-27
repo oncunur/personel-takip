@@ -49,7 +49,7 @@ const OzetModul = (() => {
           <strong>Toplam</strong>
           <span class="hucre-alt">${veriler.length} personel · ${bordroSayisi} bordro</span>
         </td>
-        <td class="ozet-sayi" style="color:#00802F;font-weight:700">${calisilan}</td>
+        <td class="ozet-sayi" style="color:#00802F;font-weight:700">${Ortak.gun(calisilan).replace(' gün','')}</td>
         <td class="ozet-sayi" style="color:#DB0000;font-weight:700">${devamsiz||'—'}</td>
         <td class="ozet-sayi" style="color:#006CE0;font-weight:700">${izinli||'—'}</td>
         <td class="ozet-sayi" style="color:#00802F"><strong>${tl(netTop||null)}</strong></td>
@@ -71,7 +71,7 @@ const OzetModul = (() => {
             <strong style="color:var(--gray-800)">${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}</strong>
             <span class="hucre-alt">${Ortak.kacir(v.pozisyon || '—')}${v.departman ? ' · ' + Ortak.kacir(v.departman) : ''}</span>
           </td>
-          <td class="ozet-sayi" style="color:#00802F;font-weight:600">${v.calisilan_gun}</td>
+          <td class="ozet-sayi" style="color:#00802F;font-weight:600">${Ortak.gun(v.calisilan_gun).replace(' gün','')}</td>
           <td class="ozet-sayi ${v.devamsiz_gun > 0 ? 'ozet-devamsiz' : 'ozet-sifir'}">${v.devamsiz_gun > 0 ? v.devamsiz_gun : '—'}</td>
           <td class="ozet-sayi ${v.izinli_gun > 0 ? 'ozet-izinli' : 'ozet-sifir'}">${v.izinli_gun > 0 ? v.izinli_gun : '—'}</td>
           <td class="ozet-sayi" style="${v.net_maas ? 'color:#00802F;font-weight:600' : 'color:var(--gray-400)'}">${tl(v.net_maas)}</td>

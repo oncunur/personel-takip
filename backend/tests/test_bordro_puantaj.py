@@ -46,7 +46,7 @@ def test_ozet_degerleri(client, token, kullanici_olustur, puantajli_ay):
     assert d["ad_soyad"] == "Kemal Yilmaz"
     assert d["baz_maas"] == 60000.0          # personel kaydından gelir
     assert d["kayit_sayisi"] == 6
-    assert d["calisilan_gun"] == 4           # 3 tam + 1 yarım
+    assert d["calisilan_gun"] == 3.5         # 3 tam + 1 yarım (yarım = 0,5)
     assert d["devamsiz_gun"] == 1
     assert d["izinli_gun"] == 1
     assert d["toplam_saat"] == 37.0          # 10 + 12 + 5 + 0 + 0 + 10
@@ -88,4 +88,4 @@ def test_ozet_bordro_olusturmada_kullanilabilir(client, token, kullanici_olustur
         "fazla_mesai_saat": ozet["fazla_mesai"],
     })
     assert r.status_code == 201, r.text
-    assert r.json()["calisilan_gun"] == 4
+    assert r.json()["calisilan_gun"] == 3.5
