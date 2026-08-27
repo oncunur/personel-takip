@@ -52,6 +52,7 @@ const KonaklamaModul = (() => {
       ${O.sekmeler('knk-tabs', [
         { key: 'konutlar', ad: 'Kiralık Evler', rozet: konutlar.filter(k => !k.kamp_mi).length },
         { key: 'kamplar', ad: 'Kamplar', rozet: konutlar.filter(k => k.kamp_mi).length },
+        { key: 'oteller', ad: 'Otel', rozet: konutlar.filter(k => k.otel_mi).length },
         { key: 'sakinler', ad: 'Yerleşim', rozet: kayitlar.filter(k => k.aktif).length },
         { key: 'giderler', ad: 'Giderler', rozet: giderler.length },
       ], sekme)}
@@ -61,12 +62,12 @@ const KonaklamaModul = (() => {
     document.querySelectorAll('#knk-tabs .idari-tab').forEach(b => {
       b.onclick = () => { sekme = b.dataset.tab; render(); };
     });
-    ({ konutlar: konutlarGovde, kamplar: kamplarGovde, sakinler: sakinlerGovde, giderler: giderlerGovde })[sekme](y);
+    ({ konutlar: konutlarGovde, kamplar: kamplarGovde, oteller: otellerGovde, sakinler: sakinlerGovde, giderler: giderlerGovde })[sekme](y);
   }
 
   function konutlarGovde(y) {
     // Kamplar ayrı sekmede listelenir
-    const liste = konutlar.filter(k => !k.kamp_mi).filter(k =>
+    const liste = konutlar.filter(k => !k.kamp_mi && !k.otel_mi).filter(k =>
       (!arama || `${k.ad} ${k.kod} ${k.adres || ''} ${k.ev_sahibi_ad || ''}`.toLowerCase().includes(arama.toLowerCase())) &&
       (!filtreTur || k.tur === filtreTur) && (!filtreDurum || k.durum === filtreDurum));
 
@@ -182,6 +183,72 @@ const KonaklamaModul = (() => {
     document.getElementById('kmp-durum').onchange = e => { filtreDurum = e.target.value; kamplarGovde(y); };
   }
 
+  // Otel konaklaması geçicidir: işe giriş sürecinde ve kiralık ev
+  // bulunana kadar kullanılır. Kira yerine gecelik ücret takip edilir.
+  function otellerGovde(y) {
+    const liste = konutlar.filter(k => k.otel_mi).filter(k =>
+      (!arama || `${k.ad} ${k.kod} ${k.adres || ''}`.toLowerCase().includes(arama.toLowerCase())) &&
+      (!filtreDurum || k.durum === filtreDurum));
+
+    const kapasite = liste.reduce((t, k) => t + (k.kapasite || 0), 0);
+    const dolu = liste.reduce((t, k) => t + (k.dolu || 0), 0);
+    const gunlukMaliyet = liste.reduce((t, k) => t + (k.gecelik_ucret || 0) * (k.dolu || 0), 0);
+
+    document.getElementById('knk-govde').innerHTML = `
+      ${O.statGrid([
+        { label: 'Otel', deger: liste.length, alt: `${kapasite} yatak kapasitesi` },
+        { label: 'Kalan Kişi', deger: dolu, alt: 'şu an otelde', renk: '#006CE0' },
+        { label: 'Günlük Maliyet', deger: O.tl(gunlukMaliyet), alt: 'konaklayanlar için', renk: '#855900' },
+        { label: 'Aylık Tahmini', deger: O.tl(gunlukMaliyet * 30), alt: '30 gün üzerinden', renk: '#855900' },
+      ])}
+
+      <div class="pano-bilgi-serit">
+        Otel konaklaması geçicidir — işe giriş sürecinde ve kiralık ev bulunana kadar sağlanır.
+        Uzun süre otelde kalan personel için kalıcı konaklama planlanmalıdır.
+      </div>
+
+      <div class="personel-toolbar">
+        <div class="arama-grup">
+          <div class="arama-input-wrap">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+            <input type="text" id="otl-arama" placeholder="Otel adı, kod, adres ara..." value="${O.kacir(arama)}" />
+          </div>
+          <select id="otl-durum" class="filtre-select">
+            <option value="">Tüm Durumlar</option>${O.enumSecenek(DURUM, filtreDurum)}
+          </select>
+        </div>
+        <div class="toolbar-sagda">
+          <span style="font-size:13px;color:var(--text-3)">${liste.length} otel</span>
+          ${y ? `<button class="btn-yeni" onclick="KonaklamaModul.yeniKonut(null, 'otel')">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+            Otel Ekle</button>` : ''}
+        </div>
+      </div>
+
+      <div class="panel" style="overflow-x:auto">
+        <table class="personel-tablo idari-tablo">
+          <thead><tr><th>Otel</th><th>Konum</th><th>Doluluk</th><th>Gecelik</th><th>Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <tbody>${liste.length ? liste.map(k => `
+            <tr>
+              <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}</span></td>
+              <td>${O.kacir(k.il || '—')}<span class="hucre-alt">${O.kacir(k.ilce || '')}</span></td>
+              <td>${O.doluluk(k.doluluk_yuzde)} <span style="font-size:12px;color:var(--text-2);margin-left:6px">${k.dolu}/${k.kapasite}</span></td>
+              <td>${O.tl(k.gecelik_ucret)}</td>
+              <td><strong>${O.tl((k.gecelik_ucret || 0) * (k.dolu || 0))}</strong></td>
+              <td>${O.rozet(DURUM[k.durum] || k.durum, DURUM_RENK[k.durum] || '#656871')}</td>
+              <td class="islem-td">
+                ${y ? `<button class="btn-mini" onclick="KonaklamaModul.yeniKonut(${k.id})">Düzenle</button>` : ''}
+              </td>
+            </tr>`).join('') : O.bosSatir('Otel kaydı yok', 7)}
+          </tbody>
+        </table>
+      </div>`;
+
+    const ara = document.getElementById('otl-arama');
+    ara.oninput = e => { arama = e.target.value; otellerGovde(y); ara.focus(); };
+    document.getElementById('otl-durum').onchange = e => { filtreDurum = e.target.value; otellerGovde(y); };
+  }
+
   function sakinlerGovde(y) {
     const aktifler = kayitlar.filter(k => k.aktif);
     const gecmis = kayitlar.filter(k => !k.aktif);
@@ -256,15 +323,17 @@ const KonaklamaModul = (() => {
       const k = id ? konutlar.find(x => x.id === id) || {} : {};
       const tur = k.tur || (typeof id === 'string' ? id : varsayilanTur) || 'kiralik_daire';
       const kampMi = tur === 'kamp';
+      const otelMi = tur === 'otel';
       const alan = (ad, etiket, tip = 'text', deger = '') =>
         `<div class="form-group"><label>${etiket}</label><input name="${ad}" type="${tip}" value="${O.kacir(deger ?? '')}" ${tip === 'number' ? 'step="0.01"' : ''} /></div>`;
-      const baslik = id ? (kampMi ? 'Kamp Düzenle' : 'Konut Düzenle') : (kampMi ? 'Kamp Ekle' : 'Konut Ekle');
+      const tip = kampMi ? 'Kamp' : otelMi ? 'Otel' : 'Konut';
+      const baslik = `${tip} ${id ? 'Düzenle' : 'Ekle'}`;
       const g = O.modalAc(baslik, `
         <form id="knk-form" class="modal-form">
           <div class="form-grid-2">
-            <div class="form-group"><label>${kampMi ? 'Kamp' : 'Konut'} Adı *</label>
+            <div class="form-group"><label>${tip} Adı *</label>
               <input name="ad" required value="${O.kacir(k.ad || '')}"
-                     placeholder="${kampMi ? 'Wesna Kamp' : 'Merkez Lojman A Blok'}" /></div>
+                     placeholder="${kampMi ? 'Wesna Kamp' : otelMi ? 'Şehir Otel' : 'Merkez Lojman A Blok'}" /></div>
             <div class="form-group"><label>Tür</label>
               <select name="tur" id="knk-tur-sec">${O.enumSecenek(TUR, tur)}</select></div>
             <div class="form-group" id="knk-odeme-grup"><label>Ödemeyi kim yapıyor</label>
@@ -273,6 +342,9 @@ const KonaklamaModul = (() => {
             ${alan('il', 'İl', 'text', k.il)}
             ${alan('ilce', 'İlçe', 'text', k.ilce)}
             ${alan('kapasite', 'Yatak Kapasitesi', 'number', k.kapasite ?? 1)}
+            <div class="form-group" id="knk-gecelik-grup"><label>Gecelik Ücret (₺)</label>
+              <input name="gecelik_ucret" type="number" step="0.01" value="${O.kacir(k.gecelik_ucret ?? 0)}" />
+              <span class="hucre-alt">Otel konaklamasında kişi başı gecelik tutar.</span></div>
             <div id="knk-kira-alanlari" class="form-grid-2" style="display:contents">
               ${alan('oda_sayisi', 'Oda Sayısı', 'text', k.oda_sayisi)}
               ${alan('aylik_kira', 'Aylık Kira (₺)', 'number', k.aylik_kira)}
@@ -295,10 +367,14 @@ const KonaklamaModul = (() => {
       const turSec = g.querySelector('#knk-tur-sec');
       const kiraAlanlari = g.querySelector('#knk-kira-alanlari');
       const odemeGrup = g.querySelector('#knk-odeme-grup');
+      const gecelikGrup = g.querySelector('#knk-gecelik-grup');
       const alanlariAyarla = () => {
         const kamp = turSec.value === 'kamp';
-        kiraAlanlari.style.display = kamp ? 'none' : 'contents';
+        const otel = turSec.value === 'otel';
+        // Kamplarda ve otellerde kira/ev sahibi bilgisi tutulmaz
+        kiraAlanlari.style.display = (kamp || otel) ? 'none' : 'contents';
         odemeGrup.style.display = kamp ? '' : 'none';
+        gecelikGrup.style.display = otel ? '' : 'none';
       };
       turSec.addEventListener('change', alanlariAyarla);
       alanlariAyarla();

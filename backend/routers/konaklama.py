@@ -32,6 +32,7 @@ class KonutOlustur(BaseModel):
     oda_sayisi: Optional[str] = None
     kapasite: int = 1
     aylik_kira: Decimal = Decimal(0)
+    gecelik_ucret: Decimal = Decimal(0)
     depozito: Decimal = Decimal(0)
     aidat: Decimal = Decimal(0)
     ev_sahibi_ad: Optional[str] = None
@@ -53,6 +54,7 @@ class KonutGuncelle(BaseModel):
     oda_sayisi: Optional[str] = None
     kapasite: Optional[int] = None
     aylik_kira: Optional[Decimal] = None
+    gecelik_ucret: Optional[Decimal] = None
     depozito: Optional[Decimal] = None
     aidat: Optional[Decimal] = None
     ev_sahibi_ad: Optional[str] = None
@@ -115,6 +117,8 @@ def konut_bilgi(db: Session, k: models.Konut) -> dict:
         "bos_yatak": max(kapasite - dolu, 0),
         "doluluk_yuzde": round(dolu / kapasite * 100) if kapasite else 0,
         "aylik_kira": float(k.aylik_kira or 0),
+        "gecelik_ucret": float(k.gecelik_ucret or 0),
+        "otel_mi": k.tur == models.KonutTur.otel,
         "depozito": float(k.depozito or 0),
         "aidat": float(k.aidat or 0),
         "ev_sahibi_ad": k.ev_sahibi_ad,
@@ -150,7 +154,10 @@ def konaklama_bilgi(kn: models.Konaklama) -> dict:
 
 def _sonraki_kod(db: Session, tur: models.KonutTur = None) -> str:
     """Kamplara KMP-, diğer konutlara KNT- öneki verilir."""
-    onek = "KMP" if tur == models.KonutTur.kamp else "KNT"
+    onek = {
+        models.KonutTur.kamp: "KMP",
+        models.KonutTur.otel: "OTL",
+    }.get(tur, "KNT")
     son = db.query(models.Konut).filter(models.Konut.kod.like(f"{onek}-%")).order_by(
         models.Konut.id.desc()).first()
     if son:
@@ -189,8 +196,11 @@ def konut_listesi(
     # arayüzde ayrı gösterildiği için tek parametreyle ayrılabiliyor.
     if kategori == "kamp":
         q = q.filter(models.Konut.tur == models.KonutTur.kamp)
+    elif kategori == "otel":
+        q = q.filter(models.Konut.tur == models.KonutTur.otel)
     elif kategori == "konut":
-        q = q.filter(models.Konut.tur != models.KonutTur.kamp)
+        # Kiralık evler: kamp ve otel dışındakiler
+        q = q.filter(models.Konut.tur.notin_([models.KonutTur.kamp, models.KonutTur.otel]))
     if odeme_sorumlusu:
         q = q.filter(models.Konut.odeme_sorumlusu == odeme_sorumlusu)
     if durum:
@@ -321,6 +331,11 @@ def _yaka_uyumu(personel, konut) -> Optional[str]:
     if not personel.yaka:
         return None
 
+    # Otel geçici konaklamadır (işe giriş süreci, ev bulunana kadar);
+    # her iki yaka için de olağan, uyarı üretilmez.
+    if konut.tur == models.KonutTur.otel:
+        return None
+
     kamp_mi = konut.tur == models.KonutTur.kamp
     if personel.yaka == models.Yaka.mavi and not kamp_mi:
         return (f"{personel.ad} {personel.soyad} mavi yaka; genellikle kampta kalır. "
@@ -442,7 +457,8 @@ def konaklama_ozet(db: Session = Depends(get_db), _: models.Kullanici = Depends(
     # kiralık evlerde kalıyor ve kampların bir kısmının bedelini işveren
     # karşıladığı için şirketin gider yükü farklı.
     kamplar = [k for k in konutlar if k.tur == models.KonutTur.kamp]
-    evler = [k for k in konutlar if k.tur != models.KonutTur.kamp]
+    oteller = [k for k in konutlar if k.tur == models.KonutTur.otel]
+    evler = [k for k in konutlar if k.tur not in (models.KonutTur.kamp, models.KonutTur.otel)]
     bykara_kamp = [k for k in kamplar if k.odeme_sorumlusu == models.OdemeSorumlusu.bykara]
     isveren_kamp = [k for k in kamplar if k.odeme_sorumlusu == models.OdemeSorumlusu.isveren]
 
@@ -471,6 +487,15 @@ def konaklama_ozet(db: Session = Depends(get_db), _: models.Kullanici = Depends(
             "isveren_sayi": len(isveren_kamp),
             "isveren_kapasite": sum(k.kapasite or 0 for k in isveren_kamp),
             "isveren_dolu": _doluluk_topla(isveren_kamp),
+        },
+        "otel": {
+            "sayi": len(oteller),
+            "kapasite": sum(k.kapasite or 0 for k in oteller),
+            "dolu": _doluluk_topla(oteller),
+            # Otelde kalan kişi başına günlük maliyet
+            "gunluk_maliyet": sum(
+                float(k.gecelik_ucret or 0) * _doluluk_topla([k]) for k in oteller
+            ),
         },
         "kiralik_ev": {
             "sayi": len(evler),

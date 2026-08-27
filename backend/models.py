@@ -255,6 +255,9 @@ class Konut(Base):
     oda_sayisi         = Column(String, nullable=True)      # "2+1"
     kapasite           = Column(Integer, default=1)         # yatak kapasitesi
     aylik_kira         = Column(Numeric(12, 2), default=0)
+    # Oteller gecelik ücretlendirilir; kiralık evlerde aylık kira,
+    # kamplarda ise ücret takibi yapılmaz.
+    gecelik_ucret      = Column(Numeric(10, 2), default=0)
     depozito           = Column(Numeric(12, 2), default=0)
     aidat              = Column(Numeric(12, 2), default=0)
     ev_sahibi_ad       = Column(String, nullable=True)

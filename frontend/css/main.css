@@ -897,6 +897,17 @@ html, body {
   border-left:1px solid var(--border-split);
 }
 
+/* Bilgi şeridi (otel konaklaması gibi bağlam notları) */
+.pano-bilgi-serit {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: var(--sp-s) var(--sp-m);
+  margin-bottom: var(--sp-m);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
 /* Toplu doldurma seçenekleri */
 .td-secenek {
   display: flex; align-items: flex-start; gap: var(--sp-s);
