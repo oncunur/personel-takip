@@ -119,7 +119,7 @@ const KullaniciModul = (() => {
     yedekIndir(ad) {
       // Dosya indirme fetch ile değil, tarayıcının kendi akışıyla yapılır
       const token = Auth.getToken();
-      fetch(`http://localhost:8000/yedek/indir/${encodeURIComponent(ad)}`, {
+      fetch(`${API_URL}/yedek/indir/${encodeURIComponent(ad)}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(r => r.ok ? r.blob() : Promise.reject(new Error('İndirilemedi')))

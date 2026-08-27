@@ -38,10 +38,14 @@ const PuantajModul = (() => {
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
     try {
-      const res = await fetch('http://localhost:8000' + url, {
+      const res = await fetch(API_URL + url, {
         ...opts, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
         signal: AbortSignal.timeout(8000),
       });
+      if (res.status === 401 || res.status === 403) {
+        Ortak.oturumDustu();
+        throw new Error('Oturum süresi doldu, yeniden giriş yapın.');
+      }
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(hataMetni(e));

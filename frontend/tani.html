@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bağlantı Tanılama</title>
+<style>
+  body { font-family: -apple-system, 'Open Sans', sans-serif; max-width: 720px;
+         margin: 0 auto; padding: 24px 16px; color: #0F141A; line-height: 1.5; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .alt { color: #656871; font-size: 14px; margin-bottom: 20px; }
+  .satir { display: flex; gap: 12px; align-items: flex-start; padding: 12px;
+           border: 1px solid #E9EBED; border-radius: 8px; margin-bottom: 8px; }
+  .ikon { font-size: 20px; line-height: 1.2; width: 24px; flex-shrink: 0; }
+  .ad { font-weight: 700; }
+  .not { color: #656871; font-size: 13px; word-break: break-word; }
+  .ok { background: #EFFFF1; border-color: #00802F; }
+  .hata { background: #FFF5F5; border-color: #DB0000; }
+  .bekle { background: #F6F6F9; }
+  #ozet { margin-top: 20px; padding: 16px; border-radius: 8px; font-size: 15px; }
+  #ozet.iyi { background: #EFFFF1; border: 1px solid #00802F; }
+  #ozet.kotu { background: #FFF5F5; border: 1px solid #DB0000; }
+  code { background: #F3F3F7; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  button { margin-top: 16px; padding: 8px 16px; border-radius: 20px; border: none;
+           background: #006CE0; color: white; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Bağlantı Tanılama</h1>
+<div class="alt">Bu sayfayı görüyorsan sayfa sunucusu çalışıyor demektir. Aşağısı API bağlantısını sınar.</div>
+
+<div id="sonuclar"></div>
+<div id="ozet"></div>
+<button onclick="location.reload()">Yeniden dene</button>
+
+<script>
+const API = `${location.protocol}//${location.hostname || 'localhost'}:8000`;
+const kutu = document.getElementById('sonuclar');
+
+function yaz(ad, durum, not) {
+  const d = document.createElement('div');
+  d.className = 'satir ' + (durum === true ? 'ok' : durum === false ? 'hata' : 'bekle');
+  d.innerHTML = `<span class="ikon">${durum === true ? '✅' : durum === false ? '❌' : '⏳'}</span>
+                 <div><div class="ad">${ad}</div><div class="not">${not}</div></div>`;
+  kutu.appendChild(d);
+  return d;
+}
+
+(async () => {
+  const hatalar = [];
+
+  yaz('Sayfa sunucusu', true, `Bu sayfa <code>${location.origin}</code> adresinden yüklendi.`);
+  yaz('Aranan API adresi', null, `<code>${API}</code>`);
+
+  // 1) API'ye ulaşılıyor mu
+  try {
+    const r = await fetch(`${API}/docs`, { method: 'GET' });
+    yaz('API sunucusuna erişim', r.ok, `HTTP ${r.status} — sunucu yanıt verdi.`);
+    if (!r.ok) hatalar.push('API yanıt verdi ama hata döndü.');
+  } catch (e) {
+    yaz('API sunucusuna erişim', false,
+        `Bağlanılamadı: ${e.message}. Backend çalışmıyor olabilir ya da bu tarayıcı ` +
+        `<code>${API}</code> adresine ulaşamıyor.`);
+    hatalar.push('API sunucusuna hiç ulaşılamıyor.');
+  }
+
+  // 2) CORS — tarayıcıdan gerçek bir API çağrısı
+  try {
+    const r = await fetch(`${API}/auth/ben`, { headers: { Authorization: 'Bearer test' } });
+    // 401 beklenen cevap: istek gitti, CORS geçti, yalnızca token geçersiz
+    yaz('CORS izni', true, `Sunucu isteği kabul etti (HTTP ${r.status}). Tarayıcı engellemiyor.`);
+  } catch (e) {
+    yaz('CORS izni', false,
+        `İstek tarayıcı tarafından engellendi: ${e.message}. Sunucu bu adresi kabul etmiyor olabilir.`);
+    hatalar.push('CORS engeli.');
+  }
+
+  // 3) Depolama — giriş bilgisi burada tutuluyor
+  try {
+    localStorage.setItem('tani', '1');
+    localStorage.removeItem('tani');
+    const token = localStorage.getItem('token');
+    yaz('Tarayıcı depolaması', true,
+        token ? 'Çalışıyor · bu tarayıcıda giriş yapılmış görünüyor.'
+              : 'Çalışıyor · bu tarayıcıda <b>henüz giriş yapılmamış</b>. Uygulama giriş ekranı göstermeli.');
+  } catch (e) {
+    yaz('Tarayıcı depolaması', false,
+        `Kapalı: ${e.message}. Özel gezinme penceresi ya da "Tüm çerezleri engelle" ayarı olabilir.`);
+    hatalar.push('localStorage kapalı — giriş yapılamaz.');
+  }
+
+  const ozet = document.getElementById('ozet');
+  if (!hatalar.length) {
+    ozet.className = 'iyi';
+    ozet.innerHTML = '<b>Bağlantıda sorun yok.</b><br>Uygulama boş görünüyorsa sorun ' +
+      'bağlantıda değil. Uygulamayı açıp giriş yapmayı dene: ' +
+      `<a href="${location.origin}/index.html">${location.origin}/index.html</a>`;
+  } else {
+    ozet.className = 'kotu';
+    ozet.innerHTML = '<b>Bulunan sorunlar:</b><ul>' +
+      hatalar.map(h => `<li>${h}</li>`).join('') + '</ul>' +
+      'Bu ekranın fotoğrafını paylaşman yeterli.';
+  }
+})();
+</script>
+</body>
+</html>

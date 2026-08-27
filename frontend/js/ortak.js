@@ -3,6 +3,19 @@
 const Ortak = (() => {
   const BASE = API_URL;   // api.js'te tanımlı; adres iki yerde tekrarlanıyordu
 
+  // Gecersiz oturumda tek bir uyari gosterip giris ekranina don. Sayfa
+  // acilisinda onlarca istek ayni anda dusebildigi icin bir kez calisir.
+  let oturumDustuBildirildi = false;
+  function oturumDustu() {
+    if (oturumDustuBildirildi) return;
+    oturumDustuBildirildi = true;
+    Auth.temizle();
+    if (typeof sayfaGoster === 'function') sayfaGoster('login');
+    if (typeof hataMesajiGoster === 'function') {
+      hataMesajiGoster('Oturum süresi doldu. Lütfen yeniden giriş yapın.');
+    }
+  }
+
   async function api(url, opts = {}) {
     const token = Auth.getToken();
     try {
@@ -11,6 +24,13 @@ const Ortak = (() => {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
         signal: AbortSignal.timeout(4000),
       });
+      if (res.status === 401 || res.status === 403) {
+        // Token suresi dolmus ya da iptal edilmis. Onceden yalnizca hata
+        // firlatiliyordu: uygulama girisli sanip acik kaliyor, her cagri
+        // dusuyor ve ekran sebebi belirsiz sekilde bos goruluyordu.
+        oturumDustu();
+        throw new Error('Oturum süresi doldu, yeniden giriş yapın.');
+      }
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(hataMetni(e));
@@ -217,6 +237,6 @@ const Ortak = (() => {
     api, tl, tlTam, sayi, gun, tarih, saatli, bugun, kacir, yonetici, rozet, kalanRozet,
     statGrid, sekmeler, bosSatir, doluluk, modalAc, modalKapat, formVeri, hataGoster,
     formHata, modalFooter, secenekler, enumSecenek, personeller, icerik,
-    opsiyonelSutunlariEsle, islemBasligiEsle,
+    opsiyonelSutunlariEsle, islemBasligiEsle, oturumDustu,
   };
 })();

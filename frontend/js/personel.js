@@ -22,13 +22,17 @@ const PersonelModul = (() => {
 
   async function apiFetch(url, opts = {}) {
     const token = Auth.getToken();
-    const base = 'http://localhost:8000';
+    const base = API_URL;
     try {
       const res = await fetch(base + url, {
         ...opts,
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
         signal: AbortSignal.timeout(4000),
       });
+      if (res.status === 401 || res.status === 403) {
+        Ortak.oturumDustu();
+        throw new Error('Oturum süresi doldu, yeniden giriş yapın.');
+      }
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(hataMetni(e));
