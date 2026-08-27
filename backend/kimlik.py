@@ -130,3 +130,48 @@ def kimlik_kurali_hatasi(uyruk: Optional[str], tc: Optional[str],
             return ("Yabancı uyruklu çalışanlar için TC kimlik numarası girilemez; "
                     "yabancı kimlik numarası (YKN) kullanın")
     return None
+
+
+# ─── Belge süre takibi ──────────────────────────────────────────────
+# Yabancı çalışanların çalışma ve ikamet izinleri sürelidir; süresi
+# dolmuş belgeyle çalıştırmak yaptırım doğurur. Pasaport da benzer
+# şekilde izlenir çünkü süresi dolmuş pasaportla izin yenilenemez.
+
+UYARI_GUN = 30      # kaç gün kala uyarı verilecek
+
+BELGELER = (
+    ("calisma_izni_bitis", "Çalışma izni"),
+    ("ikamet_izni_bitis", "İkamet izni"),
+    ("pasaport_gecerlilik", "Pasaport"),
+)
+
+
+def belge_uyarilari(personel, bugun=None, uyari_gun: int = UYARI_GUN) -> list:
+    """Süresi dolmuş veya yaklaşan belgeleri döner.
+
+    Türk vatandaşları için çalışma/ikamet izni aranmaz; onlarda yalnızca
+    pasaport süresi izlenir (varsa).
+    """
+    from datetime import date as _date
+    bugun = bugun or _date.today()
+    uyarilar = []
+
+    for alan, ad in BELGELER:
+        bitis = getattr(personel, alan, None)
+        if not bitis:
+            continue
+        if turk_vatandasi(getattr(personel, "uyruk", None)) and alan != "pasaport_gecerlilik":
+            continue
+
+        kalan = (bitis - bugun).days
+        if kalan > uyari_gun:
+            continue
+        uyarilar.append({
+            "belge": ad,
+            "alan": alan,
+            "bitis": str(bitis),
+            "kalan_gun": kalan,
+            "durum": "gecti" if kalan < 0 else "yaklasiyor",
+        })
+
+    return uyarilar

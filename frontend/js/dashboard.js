@@ -125,13 +125,14 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
 
   // Puantaj cetveli yalnızca yöneticiye açık; personel rolünde 403
   // dönüp tüm panoyu düşürmesin diye ayrıca yakalanır.
-  const [genel, izinTrend, depDagilim, konak, dmb, arc, evr, sat, stk, cetvel] = await Promise.all([
+  const [genel, izinTrend, depDagilim, konak, dmb, arc, evr, sat, stk, cetvel, belgeler] = await Promise.all([
     O.api('/rapor/genel'),
     O.api('/rapor/aylik-izin-trend'),
     O.api('/rapor/departman-dagilim'),
     O.api('/konaklama/ozet'), O.api('/demirbas/ozet'), O.api('/arac/ozet'),
     O.api('/evrak/ozet'), O.api('/satinalma/ozet'), O.api('/stok/ozet'),
     yonetici ? O.api(`/puantaj/cetvel?yil=${yil}&ay=${ay}`).catch(() => null) : Promise.resolve(null),
+    yonetici ? O.api('/personel/belge-uyarilari').catch(() => null) : Promise.resolve(null),
   ]);
 
   const hedef = document.getElementById('anasayfa-ozet');
@@ -155,6 +156,14 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
 
   // ── Bekleyen işler ──
   const isler = [];
+  // Süresi geçmiş çalışma/ikamet izni yaptırım riski taşıdığı için
+  // listenin en başında ve ayrı vurguyla gösterilir.
+  if (belgeler && belgeler.gecmis) {
+    isler.push({ sayfa: 'personel', ad: 'Süresi GEÇMİŞ çalışma/ikamet izni', sayi: belgeler.gecmis, agir: true });
+  }
+  if (belgeler && belgeler.toplam - (belgeler.gecmis || 0) > 0) {
+    isler.push({ sayfa: 'personel', ad: 'Süresi yaklaşan çalışma/ikamet izni', sayi: belgeler.toplam - belgeler.gecmis });
+  }
   if (genel.bekleyen_izin) isler.push({ sayfa: 'izin', ad: 'Onay bekleyen izin talebi', sayi: genel.bekleyen_izin });
   if (sat && sat.beklemede) isler.push({ sayfa: 'satinalma', ad: 'Onay bekleyen satın alma talebi', sayi: sat.beklemede });
   if (stk && stk.kritik_sayisi) isler.push({ sayfa: 'stok', ad: 'Kritik seviyedeki stok kalemi', sayi: stk.kritik_sayisi });
@@ -165,9 +174,9 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
 
   const islerGovde = isler.length
     ? `<div class="pano-liste">${isler.map(i => `
-        <div class="pano-liste-satir" onclick="sayfayaGit('${i.sayfa}')">
+        <div class="pano-liste-satir${i.agir ? ' pano-liste-agir' : ''}" onclick="sayfayaGit('${i.sayfa}')">
           <span>${i.ad}</span>
-          <span class="durum-badge" style="background:${i.sayi > 3 ? '#FFF5F5' : '#FFFEF0'};color:${i.sayi > 3 ? '#DB0000' : '#855900'}">${i.sayi} adet</span>
+          <span class="durum-badge" style="background:${(i.agir || i.sayi > 3) ? '#FFF5F5' : '#FFFEF0'};color:${(i.agir || i.sayi > 3) ? '#DB0000' : '#855900'}">${i.sayi} adet</span>
         </div>`).join('')}</div>`
     : `<div class="pano-govde pano-bos">
          <strong>Bekleyen iş yok</strong>

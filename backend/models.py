@@ -50,6 +50,15 @@ class Personel(Base):
     yabanci_kimlik_no = Column(String(11), unique=True, nullable=True, index=True)
     pasaport_no = Column(String(20), nullable=True, index=True)
     pasaport_gecerlilik = Column(Date, nullable=True)
+
+    # ── Yabancı çalışanların izin belgeleri ──
+    # Çalışma izni Çalışma ve Sosyal Güvenlik Bakanlığı'nca, ikamet izni
+    # Göç İdaresi'nce verilir ve ikisi de sürelidir. Süresi dolan belgeyle
+    # çalıştırmak yaptırım doğurduğu için bitiş tarihleri takip edilir.
+    calisma_izni_no = Column(String(30), nullable=True)
+    calisma_izni_bitis = Column(Date, nullable=True, index=True)
+    ikamet_izni_no = Column(String(30), nullable=True)
+    ikamet_izni_bitis = Column(Date, nullable=True, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
     telefon = Column(String, nullable=True)
     departman_id = Column(Integer, ForeignKey("departmanlar.id"), nullable=True)

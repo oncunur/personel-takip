@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import models
 import kimlik
 from database import get_db
-from routers.auth import aktif_kullanici, yonetici_mi, kullanici_personeli
+from routers.auth import aktif_kullanici, yonetici_mi, yonetici_yetkisi, kullanici_personeli
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from datetime import date
 from decimal import Decimal
@@ -94,6 +94,10 @@ class PersonelOlustur(KimlikKarma):
     yabanci_kimlik_no: Optional[str] = None
     pasaport_no: Optional[str] = None
     pasaport_gecerlilik: Optional[date] = None
+    calisma_izni_no: Optional[str] = None
+    calisma_izni_bitis: Optional[date] = None
+    ikamet_izni_no: Optional[str] = None
+    ikamet_izni_bitis: Optional[date] = None
     telefon: Optional[str] = None
     departman_id: Optional[int] = None
     pozisyon: Optional[str] = None
@@ -113,6 +117,10 @@ class PersonelGuncelle(KimlikKarma):
     yabanci_kimlik_no: Optional[str] = None
     pasaport_no: Optional[str] = None
     pasaport_gecerlilik: Optional[date] = None
+    calisma_izni_no: Optional[str] = None
+    calisma_izni_bitis: Optional[date] = None
+    ikamet_izni_no: Optional[str] = None
+    ikamet_izni_bitis: Optional[date] = None
     telefon: Optional[str] = None
     departman_id: Optional[int] = None
     pozisyon: Optional[str] = None
@@ -134,6 +142,10 @@ class PersonelBilgi(BaseModel):
     yabanci_kimlik_no: Optional[str]
     pasaport_no: Optional[str]
     pasaport_gecerlilik: Optional[date]
+    calisma_izni_no: Optional[str]
+    calisma_izni_bitis: Optional[date]
+    ikamet_izni_no: Optional[str]
+    ikamet_izni_bitis: Optional[date]
     telefon: Optional[str]
     departman_id: Optional[int]
     departman_ad: Optional[str] = None
@@ -151,7 +163,8 @@ class PersonelBilgi(BaseModel):
 # ---------- Yardımcı ----------
 # Yalnızca yöneticilerin ve kaydın sahibinin görebileceği alanlar
 HASSAS_ALANLAR = ("tc_kimlik", "yabanci_kimlik_no", "pasaport_no",
-                  "pasaport_gecerlilik", "dogum_tarihi", "adres", "maas", "notlar")
+                  "pasaport_gecerlilik", "calisma_izni_no", "ikamet_izni_no",
+                  "dogum_tarihi", "adres", "maas", "notlar")
 
 
 def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
@@ -171,6 +184,11 @@ def personel_bilgi(p: models.Personel, hassas: bool = True) -> dict:
         "yabanci_kimlik_no": p.yabanci_kimlik_no,
         "pasaport_no": p.pasaport_no,
         "pasaport_gecerlilik": str(p.pasaport_gecerlilik) if p.pasaport_gecerlilik else None,
+        "calisma_izni_no": p.calisma_izni_no,
+        "calisma_izni_bitis": str(p.calisma_izni_bitis) if p.calisma_izni_bitis else None,
+        "ikamet_izni_no": p.ikamet_izni_no,
+        "ikamet_izni_bitis": str(p.ikamet_izni_bitis) if p.ikamet_izni_bitis else None,
+        "belge_uyarilari": kimlik.belge_uyarilari(p),
         "telefon": p.telefon,
         "departman_id": p.departman_id,
         "departman_ad": p.departman.ad if p.departman else None,
@@ -211,6 +229,42 @@ def _benzersizlik_denetle(db: Session, email=None, tc=None, ykn=None, haric_id=N
 
 
 # ---------- Referans listeler ----------
+@router.get("/belge-uyarilari")
+def belge_uyarilari(
+    gun: int = Query(kimlik.UYARI_GUN, ge=0, le=365),
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Süresi dolmuş veya dolmak üzere olan çalışan belgeleri.
+
+    Çalışma ve ikamet izni süresi geçmiş bir çalışanı çalıştırmak
+    yaptırım doğurduğu için bu liste anasayfada uyarı olarak gösterilir.
+    """
+    personeller = db.query(models.Personel).filter(
+        models.Personel.durum != models.PersonelDurum.pasif
+    ).all()
+
+    satirlar = []
+    for p in personeller:
+        for u in kimlik.belge_uyarilari(p, uyari_gun=gun):
+            satirlar.append({
+                "personel_id": p.id,
+                "ad_soyad": f"{p.ad} {p.soyad}",
+                "uyruk": p.uyruk,
+                "uyruk_ad": kimlik.ulke_adi(p.uyruk),
+                **u,
+            })
+
+    # Süresi geçmişler en önde, sonra en yakın bitiş
+    satirlar.sort(key=lambda x: x["kalan_gun"])
+    return {
+        "uyari_gun": gun,
+        "toplam": len(satirlar),
+        "gecmis": sum(1 for x in satirlar if x["durum"] == "gecti"),
+        "veriler": satirlar,
+    }
+
+
 @router.get("/ulkeler")
 def ulke_listesi(_: models.Kullanici = Depends(aktif_kullanici)):
     """Uyruk seçimi için ülke listesi (ISO 3166-1 alfa-2)."""

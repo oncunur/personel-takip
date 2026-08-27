@@ -217,6 +217,25 @@ const PersonelModul = (() => {
             <input type="date" name="pasaport_gecerlilik" value="${p.pasaport_gecerlilik||''}" /></div>
         </div>
 
+        <div id="pf-izin-bolum">
+          <div class="form-bolum-baslik">Çalışma ve İkamet İzni</div>
+          <p class="hucre-alt" style="margin:-4px 0 8px">
+            Yabancı çalışanlar için zorunludur. Süresi dolan belgeler anasayfada uyarı olarak listelenir.
+          </p>
+          <div class="form-grid-2">
+            <div class="form-group"><label>Çalışma İzni No</label>
+              <input name="calisma_izni_no" maxlength="30"
+                     value="${p.calisma_izni_no||''}" placeholder="CI-2026-1234" /></div>
+            <div class="form-group"><label>Çalışma İzni Bitiş</label>
+              <input type="date" name="calisma_izni_bitis" value="${p.calisma_izni_bitis||''}" /></div>
+            <div class="form-group"><label>İkamet İzni No</label>
+              <input name="ikamet_izni_no" maxlength="30"
+                     value="${p.ikamet_izni_no||''}" placeholder="IK-2026-5678" /></div>
+            <div class="form-group"><label>İkamet İzni Bitiş</label>
+              <input type="date" name="ikamet_izni_bitis" value="${p.ikamet_izni_bitis||''}" /></div>
+          </div>
+        </div>
+
         <div class="form-bolum-baslik">Görev Bilgileri</div>
         <div class="form-grid-2">
           <div class="form-group"><label>Pozisyon</label><input name="pozisyon" value="${p.pozisyon||''}" placeholder="Yazılım Geliştirici" /></div>
@@ -267,6 +286,10 @@ const PersonelModul = (() => {
       if (kilitli) alan.value = '';
     };
     if (!tc.dataset.ipucu) { tc.dataset.ipucu = tc.placeholder; ykn.dataset.ipucu = ykn.placeholder; }
+
+    // Çalışma/ikamet izni yalnızca yabancı uyruklular için anlamlı
+    const izinBolum = document.getElementById('pf-izin-bolum');
+    if (izinBolum) izinBolum.classList.toggle('gizli', !uyruk || uyruk === 'TR');
 
     if (!uyruk) {
       kilitle(tc, true, 'Önce uyruk seçin');
@@ -352,7 +375,16 @@ const PersonelModul = (() => {
     async detayAc(id) {
       const p = await apiFetch(`/personel/${id}`);
       document.getElementById('modal-baslik').textContent = `${p.ad} ${p.soyad}`;
+      const uyarilar = p.belge_uyarilari || [];
       document.getElementById('modal-icerik').innerHTML = `
+        ${uyarilar.length ? `<div class="belge-uyari-serit">
+          ${uyarilar.map(u => `<div class="belge-uyari ${u.durum}">
+            <strong>${Ortak.kacir(u.belge)}</strong>
+            ${u.durum === 'gecti'
+              ? `süresi ${Math.abs(u.kalan_gun)} gün önce doldu (${u.bitis})`
+              : `${u.kalan_gun} gün sonra doluyor (${u.bitis})`}
+          </div>`).join('')}
+        </div>` : ''}
         <div class="detay-grid">
           <div class="detay-satir"><span>E-posta</span><strong>${K(p.email)}</strong></div>
           <div class="detay-satir"><span>Telefon</span><strong>${K(p.telefon)}</strong></div>
@@ -361,6 +393,10 @@ const PersonelModul = (() => {
           ${p.yabanci_kimlik_no ? `<div class="detay-satir"><span>Yabancı Kimlik No</span><strong>${K(p.yabanci_kimlik_no)}</strong></div>` : ''}
           ${p.pasaport_no ? `<div class="detay-satir"><span>Pasaport No</span><strong>${K(p.pasaport_no)}</strong></div>` : ''}
           ${p.pasaport_gecerlilik ? `<div class="detay-satir"><span>Pasaport Geçerlilik</span><strong>${K(p.pasaport_gecerlilik)}</strong></div>` : ''}
+          ${p.calisma_izni_no ? `<div class="detay-satir"><span>Çalışma İzni No</span><strong>${K(p.calisma_izni_no)}</strong></div>` : ''}
+          ${p.calisma_izni_bitis ? `<div class="detay-satir"><span>Çalışma İzni Bitiş</span><strong>${K(p.calisma_izni_bitis)}</strong></div>` : ''}
+          ${p.ikamet_izni_no ? `<div class="detay-satir"><span>İkamet İzni No</span><strong>${K(p.ikamet_izni_no)}</strong></div>` : ''}
+          ${p.ikamet_izni_bitis ? `<div class="detay-satir"><span>İkamet İzni Bitiş</span><strong>${K(p.ikamet_izni_bitis)}</strong></div>` : ''}
           <div class="detay-satir"><span>Departman</span><strong>${K(p.departman_ad)}</strong></div>
           <div class="detay-satir"><span>Pozisyon</span><strong>${K(p.pozisyon)}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${durumRenk[p.durum]}22;color:${durumRenk[p.durum]}">${durumEtiket[p.durum]}</span></div>

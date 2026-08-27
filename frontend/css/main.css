@@ -742,6 +742,27 @@ html, body {
 }
 .form-group-kilitli input::placeholder { color: var(--text-4); font-style: italic; }
 
+/* Belge süresi uyarı şeridi (personel detayında) */
+.belge-uyari-serit { display: flex; flex-direction: column; gap: var(--sp-xs); padding: var(--sp-m) var(--sp-l) 0; }
+.belge-uyari {
+  display: flex; align-items: baseline; gap: var(--sp-xs);
+  padding: var(--sp-s) var(--sp-m);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: var(--warning-bg); color: var(--warning);
+  border-left: 3px solid var(--warning);
+}
+.belge-uyari.gecti {
+  background: var(--danger-bg); color: var(--danger);
+  border-left-color: var(--danger);
+}
+.belge-uyari strong { font-weight: 700; }
+
+/* Anasayfada süresi geçmiş belge satırı */
+.pano-liste-agir { background: var(--danger-bg); }
+.pano-liste-agir:hover { background: #FFE8E8; }
+.pano-liste-agir span:first-child { font-weight: 700; color: var(--danger); }
+
 /* Uyruk kodu etiketi (TR, UZ, KG ...) */
 .uyruk-etiket {
   display: inline-block;
