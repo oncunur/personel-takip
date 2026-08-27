@@ -181,12 +181,16 @@ def _konaklama_maliyeti(kn: models.Konaklama) -> dict:
         gecelik = kn.konut.gecelik_ucret
     gecelik = float(gecelik or 0)
 
-    tahmini = round(gecelik * gece, 2)
+    # Oteller gecelik fiyatı vergi hariç veriyor; ödenecek tutar bulunurken
+    # KDV ve konaklama vergisi eklenir. Önceden girilen ücret vergi dahil
+    # sayılıyordu ve tahminler faturadan düşük çıkıyordu.
+    carpan = 1 + KDV_ORANI + KONAKLAMA_VERGISI_ORANI
+    tahmini = round(gecelik * gece * carpan, 2)
+
     faturali = kn.fatura_tutari is not None
     tutar = float(kn.fatura_tutari) if faturali else tahmini
 
-    # Brüt tutardan net ve vergileri ayrıştır
-    carpan = 1 + KDV_ORANI + KONAKLAMA_VERGISI_ORANI
+    # Fatura tutarı vergiler dahil gelir; matrah geriye doğru ayrıştırılır
     net = round(tutar / carpan, 2) if tutar else 0.0
 
     return {
@@ -661,10 +665,13 @@ def konaklama_ozet(db: Session = Depends(get_db), _: models.Kullanici = Depends(
             "sayi": len(oteller),
             "kapasite": sum(k.kapasite or 0 for k in oteller),
             "dolu": _doluluk_topla(oteller),
-            # Otelde kalan kişi başına günlük maliyet
-            "gunluk_maliyet": sum(
+            # Otelde kalan kişi başına günlük maliyet. Gecelik ücret vergi
+            # hariç tutulduğu için ödenecek tutar bulunurken vergiler eklenir;
+            # aksi halde aynı ekranda vergili ve vergisiz rakamlar yan yana
+            # duruyordu.
+            "gunluk_maliyet": round(sum(
                 float(k.gecelik_ucret or 0) * _doluluk_topla([k]) for k in oteller
-            ),
+            ) * (1 + KDV_ORANI + KONAKLAMA_VERGISI_ORANI), 2),
         },
         "kiralik_ev": {
             "sayi": len(evler),

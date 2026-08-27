@@ -1327,3 +1327,7 @@ html, body {
   /* İkon düğmeleri kendi başlarına anlaşılıyor; başlık yer kaplamasın */
   .personel-tablo th.islem, .idari-tablo th.islem { font-size: 0; }
 }
+
+/* Otel gecelik fiyatı vergi hariç girilir; başlıkta ve formda belirtilir */
+.baslik-not { font-weight: 400; color: var(--text-3); font-size: 11px; }
+.form-not { font-weight: 400; color: var(--text-3); font-size: 12px; }

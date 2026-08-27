@@ -57,7 +57,8 @@ def test_ozet_oteli_ayri_raporlar(client, token, kullanici_olustur, db_session, 
     d = client.get("/konaklama/ozet", headers=token("mudur")).json()
     assert d["otel"]["sayi"] == 1
     assert d["otel"]["dolu"] == 1
-    assert d["otel"]["gunluk_maliyet"] == 2500.0      # 1 kişi × 2500
+    # Gecelik ücret vergi hariç; günlük maliyet vergilerle birlikte
+    assert d["otel"]["gunluk_maliyet"] == pytest.approx(2500.0 * 1.11, abs=0.05)
     assert d["kiralik_ev"]["sayi"] == 1               # otel eve dahil edilmemeli
 
 

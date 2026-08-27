@@ -198,13 +198,15 @@ const KonaklamaModul = (() => {
 
     const kapasite = liste.reduce((t, k) => t + (k.kapasite || 0), 0);
     const dolu = liste.reduce((t, k) => t + (k.dolu || 0), 0);
-    const gunlukMaliyet = liste.reduce((t, k) => t + (k.gecelik_ucret || 0) * (k.dolu || 0), 0);
+    // Gecelik ücret vergi hariç; kartlar ödenecek tutarı gösterir
+    const gunlukMaliyet = liste.reduce(
+      (t, k) => t + (k.gecelik_ucret || 0) * (k.dolu || 0), 0) * VERGI_CARPANI;
 
     document.getElementById('knk-govde').innerHTML = `
       ${O.statGrid([
         { label: 'Otel', deger: liste.length, alt: `${kapasite} yatak kapasitesi` },
         { label: 'Kalan Kişi', deger: dolu, alt: 'şu an otelde', renk: '#006CE0' },
-        { label: 'Günlük Maliyet', deger: O.tl(gunlukMaliyet), alt: 'konaklayanlar için', renk: '#855900' },
+        { label: 'Günlük Maliyet', deger: O.tl(gunlukMaliyet), alt: 'konaklayanlar için · vergi dahil', renk: '#855900' },
         { label: 'Aylık Tahmini', deger: O.tl(gunlukMaliyet * 30), alt: '30 gün üzerinden', renk: '#855900' },
       ])}
 
@@ -233,14 +235,14 @@ const KonaklamaModul = (() => {
 
       <div class="panel" style="overflow-x:auto;margin-bottom:var(--sp-m)">
         <table class="personel-tablo idari-tablo">
-          <thead><tr><th>Otel</th><th class="opsiyonel">Konum</th><th>Doluluk</th><th>Gecelik</th><th>Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
+          <thead><tr><th>Otel</th><th class="opsiyonel">Konum</th><th>Doluluk</th><th class="sayi" title="Vergi hariç fiyat">Gecelik <span class="baslik-not">+KDV</span></th><th class="sayi">Günlük Maliyet</th><th>Durum</th><th>İşlemler</th></tr></thead>
           <tbody>${liste.length ? liste.map(k => `
             <tr>
               <td><strong>${O.kacir(k.ad)}</strong><span class="hucre-alt">${O.kacir(k.kod)}</span></td>
               <td>${O.kacir(k.il || '—')}<span class="hucre-alt">${O.kacir(k.ilce || '')}</span></td>
               <td>${O.doluluk(k.doluluk_yuzde)} <span style="font-size:12px;color:var(--text-2);margin-left:6px">${k.dolu}/${k.kapasite}</span></td>
-              <td>${O.tl(k.gecelik_ucret)}</td>
-              <td><strong>${O.tl((k.gecelik_ucret || 0) * (k.dolu || 0))}</strong></td>
+              <td class="sayi">${O.tl(k.gecelik_ucret)}</td>
+              <td class="sayi"><strong>${O.tl((k.gecelik_ucret || 0) * (k.dolu || 0) * VERGI_CARPANI)}</strong></td>
               <td>${O.rozet(DURUM[k.durum] || k.durum, DURUM_RENK[k.durum] || '#656871')}</td>
               <td class="islem-td">
                 ${y ? `<button class="btn-mini" onclick="KonaklamaModul.yeniKonut(${k.id})">Düzenle</button>` : ''}
@@ -259,6 +261,9 @@ const KonaklamaModul = (() => {
 
   // Kişi bazlı konaklama dökümü: kim, hangi oda, kaç gece, ne kadar.
   // Fatura kesilmemiş kayıtlarda gecelik ücretten tahmin gösterilir.
+  // Gecelik ücret vergi hariç girilir; ödenecek tutar bulunurken eklenir
+  const VERGI_CARPANI = 1.11;   // %10 KDV + %1 konaklama vergisi
+
   const UZUN_KONAKLAMA = 30;   // bu geceden fazlası kalıcı konaklama gerektirir
 
   function otelDokumu(y) {
@@ -279,7 +284,7 @@ const KonaklamaModul = (() => {
               <th>Personel</th>
               <th>Konaklama</th>
               <th class="sayi">Gece</th>
-              <th class="sayi">Gecelik</th>
+              <th class="sayi" title="Vergi hariç fiyat">Gecelik <span class="baslik-not">+KDV</span></th>
               <th class="sayi">Tutar</th>
               <th>Fatura</th>
               <th class="islem">İşlem</th>
@@ -510,7 +515,7 @@ const KonaklamaModul = (() => {
             ${alan('il', 'İl', 'text', k.il)}
             ${alan('ilce', 'İlçe', 'text', k.ilce)}
             ${alan('kapasite', 'Yatak Kapasitesi', 'number', k.kapasite ?? 1)}
-            <div class="form-group" id="knk-gecelik-grup"><label>Gecelik Ücret (₺)</label>
+            <div class="form-group" id="knk-gecelik-grup"><label>Gecelik Ücret (₺) <span class="form-not">vergi hariç</span></label>
               <input name="gecelik_ucret" type="number" step="0.01" value="${O.kacir(k.gecelik_ucret ?? 0)}" />
               <span class="hucre-alt">Otel konaklamasında kişi başı gecelik tutar.</span></div>
             <div id="knk-kira-alanlari" class="form-grid-2" style="display:contents">

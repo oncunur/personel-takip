@@ -14,7 +14,7 @@ import pytest
 @pytest.fixture()
 def otel(db_session):
     k = models.Konut(kod="OTL-001", ad="LADES OTEL", tur=models.KonutTur.otel,
-                     kapasite=12, gecelik_ucret=3300, il="Mersin", ilce="Silifke")
+                     kapasite=12, gecelik_ucret=2972.97, il="Mersin", ilce="Silifke")
     db_session.add(k); db_session.commit(); db_session.refresh(k)
     return k
 
@@ -46,13 +46,13 @@ def test_fatura_kesilmeden_maliyet_hesaplanir(client, token, kullanici_olustur,
     d = r.json()
 
     assert d["gece_sayisi"] == 9
-    assert d["gecelik_ucret"] == 3300.0
-    assert d["tahmini_tutar"] == 29700.0
+    assert d["gecelik_ucret"] == 2972.97          # vergi hariç
+    assert d["tahmini_tutar"] == pytest.approx(29700.0, abs=0.05)
     assert d["faturalandi"] is False
     # Faturadaki kırılımla birebir
-    assert d["net_tutar"] == 26756.76
-    assert d["kdv"] == 2675.68
-    assert d["konaklama_vergisi"] == 267.57
+    assert d["net_tutar"] == pytest.approx(26756.76, abs=0.05)
+    assert d["kdv"] == pytest.approx(2675.68, abs=0.05)
+    assert d["konaklama_vergisi"] == pytest.approx(267.57, abs=0.05)
     assert d["oda_no"] == "03" and d["pansiyon"] == "BB"
     assert d["rezervasyon_no"] == "96195089"
 
@@ -63,8 +63,8 @@ def test_gecelik_ucret_kayda_ozel_verilebilir(client, token, kullanici_olustur, 
     r = kayit_olustur(client, token("mudur"), otel, kisi,
                       cikis_tarihi="2026-08-20", gecelik_ucret=2800)
     d = r.json()
-    assert d["gecelik_ucret"] == 2800.0
-    assert d["tahmini_tutar"] == 2800.0 * 5
+    assert d["gecelik_ucret"] == 2800.0           # vergi hariç
+    assert d["tahmini_tutar"] == pytest.approx(2800.0 * 5 * 1.11, abs=0.05)
 
 
 def test_devam_eden_konaklama_bugune_kadar_sayilir(client, token, kullanici_olustur,
@@ -76,7 +76,7 @@ def test_devam_eden_konaklama_bugune_kadar_sayilir(client, token, kullanici_olus
         "konut_id": otel.id, "personel_id": kisi.id, "giris_tarihi": str(giris)})
     d = r.json()
     assert d["gece_sayisi"] == 4
-    assert d["tahmini_tutar"] == 3300.0 * 4
+    assert d["tahmini_tutar"] == pytest.approx(2972.97 * 4 * 1.11, abs=0.05)
 
 
 # ─── Fatura işleme ───────────────────────────────────────────────────
@@ -94,7 +94,7 @@ def test_fatura_islenince_gercek_tutar_gecerli(client, token, kullanici_olustur,
     assert d["faturalandi"] is True
     assert d["fatura_no"] == "LDE2026000000215"
     assert d["tutar"] == 29700.0
-    assert d["tahminden_fark"] == 0.0          # tahmin tuttu
+    assert d["tahminden_fark"] == pytest.approx(0.0, abs=0.05)   # tahmin tuttu
 
 
 def test_fatura_tahminden_saparsa_fark_gorunur(client, token, kullanici_olustur, otel, kisi):
@@ -105,7 +105,7 @@ def test_fatura_tahminden_saparsa_fark_gorunur(client, token, kullanici_olustur,
     r = client.post(f"/konaklama/kayitlar/{kid}/fatura", headers=h, json={
         "fatura_no": "LDE2026000000216", "fatura_tarihi": "2026-08-24",
         "fatura_tutari": 31200})
-    assert r.json()["tahminden_fark"] == 1500.0
+    assert r.json()["tahminden_fark"] == pytest.approx(1500.0, abs=0.05)
     assert r.json()["tutar"] == 31200.0
 
 
@@ -137,8 +137,8 @@ def test_otel_ozeti_kisi_bazli_dokum(client, token, kullanici_olustur, db_sessio
     assert d["toplam_gece"] == 14                  # 9 + 5
     assert d["faturalanan"] == 1 and d["faturalanmamis"] == 1
     assert d["faturalanan_tutar"] == 29700.0
-    assert d["bekleyen_tutar"] == 16500.0          # 5 gece × 3300
-    assert d["toplam_tutar"] == 46200.0
+    assert d["bekleyen_tutar"] == pytest.approx(2972.97 * 5 * 1.11, abs=0.05)   # 5 gece
+    assert d["toplam_tutar"] == pytest.approx(46200.0, abs=0.05)
 
 
 def test_otel_ozeti_yalnizca_otelleri_kapsar(client, token, kullanici_olustur,
