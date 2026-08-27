@@ -76,9 +76,9 @@ const OzetModul = (() => {
         : null;
       return `
         <tr>
-          <td><strong style="color:var(--gray-800)">${v.ad} ${v.soyad}</strong></td>
-          <td><span style="font-size:12px;color:var(--gray-500)">${v.departman||'—'}</span></td>
-          <td style="font-size:12px;color:var(--gray-500)">${v.pozisyon||'—'}</td>
+          <td><strong style="color:var(--gray-800)">${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}</strong></td>
+          <td><span style="font-size:12px;color:var(--gray-500)">${Ortak.kacir(v.departman || '—')}</span></td>
+          <td style="font-size:12px;color:var(--gray-500)">${Ortak.kacir(v.pozisyon || '—')}</td>
           <td class="ozet-sayi" style="color:#00802F;font-weight:600">${v.calisilan_gun}</td>
           <td class="ozet-sayi ${v.devamsiz_gun > 0 ? 'ozet-devamsiz' : 'ozet-sifir'}">${v.devamsiz_gun > 0 ? v.devamsiz_gun : '—'}</td>
           <td class="ozet-sayi ${v.izinli_gun > 0 ? 'ozet-izinli' : 'ozet-sifir'}">${v.izinli_gun > 0 ? v.izinli_gun : '—'}</td>
@@ -165,7 +165,7 @@ const OzetModul = (() => {
       const baslik = ['Ad Soyad','Departman','Pozisyon','Çalışılan Gün','Devamsız','İzinli','FM (s)','Brüt Maaş','Kesintiler','Net Maaş','Bordro Durum'];
       const satirlar = [baslik, ...veriler.map(v => {
         const kes = v.brut_maas ? ((v.sgk_isci||0)+(v.issizlik_isci||0)+(v.gelir_vergisi||0)+(v.damga_vergisi||0)).toFixed(2) : '';
-        return [`${v.ad} ${v.soyad}`, v.departman||'', v.pozisyon||'',
+        return [`${Ortak.kacir(v.ad)} ${Ortak.kacir(v.soyad)}`, v.departman||'', v.pozisyon||'',
           v.calisilan_gun, v.devamsiz_gun, v.izinli_gun, v.fazla_mesai,
           v.brut_maas||'', kes, v.net_maas||'', DURUM_METIN[v.bordro_durum]||'Bordro Yok'];
       })];

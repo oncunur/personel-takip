@@ -22,12 +22,12 @@ function rolBadge(rol) {
 function dashboardYukle(kullanici) {
   // Sidebar kullanıcı bilgisi
   document.getElementById('sidebar-kullanici').innerHTML = `
-    <strong>${kullanici.ad} ${kullanici.soyad}</strong>
+    <strong>${Ortak.kacir(kullanici.ad)} ${Ortak.kacir(kullanici.soyad)}</strong>
     ${rolBadge(kullanici.rol)}
   `;
   document.getElementById('header-kullanici').innerHTML = `
     <span style="color:var(--gray-500)">Hoş geldiniz,</span>
-    <strong style="color:var(--gray-800)">${kullanici.ad}</strong>
+    <strong style="color:var(--gray-800)">${Ortak.kacir(kullanici.ad)}</strong>
     ${rolBadge(kullanici.rol)}
   `;
 
@@ -175,7 +175,7 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
   const islerGovde = isler.length
     ? `<div class="pano-liste">${isler.map(i => `
         <div class="pano-liste-satir${i.agir ? ' pano-liste-agir' : ''}" onclick="sayfayaGit('${i.sayfa}')">
-          <span>${i.ad}</span>
+          <span>${Ortak.kacir(i.ad)}</span>
           <span class="durum-badge" style="background:${(i.agir || i.sayi > 3) ? '#FFF5F5' : '#FFFEF0'};color:${(i.agir || i.sayi > 3) ? '#DB0000' : '#855900'}">${i.sayi} adet</span>
         </div>`).join('')}</div>`
     : `<div class="pano-govde pano-bos">

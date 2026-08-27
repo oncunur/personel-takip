@@ -41,8 +41,8 @@ const BordroModul = (() => {
     tbody.innerHTML = bordrolar.map(b => `
       <tr>
         <td>
-          <div style="font-weight:600;color:var(--gray-900)">${b.personel_ad}</div>
-          <div style="font-size:12px;color:var(--gray-400)">${b.personel_departman||''}</div>
+          <div style="font-weight:600;color:var(--gray-900)">${Ortak.kacir(b.personel_ad)}</div>
+          <div style="font-size:12px;color:var(--gray-400)">${Ortak.kacir(b.personel_departman || '')}</div>
         </td>
         <td style="font-size:13px">${AYLAR[b.ay-1]} ${b.yil}</td>
         <td style="font-size:13px">${tl(b.baz_maas)}</td>
@@ -86,7 +86,7 @@ const BordroModul = (() => {
   function hesaplamaFormHtml() {
     const bugun = new Date();
     const pOptions = (personeller)
-      .map(p => `<option value="${p.id}" data-maas="${p.maas||0}">${p.ad} ${p.soyad}</option>`).join('');
+      .map(p => `<option value="${p.id}" data-maas="${p.maas||0}">${Ortak.kacir(p.ad)} ${Ortak.kacir(p.soyad)}</option>`).join('');
     return `
       <form id="bordro-form" class="modal-form">
         <div class="form-group"><label>Personel *</label>
@@ -315,7 +315,7 @@ const BordroModul = (() => {
 
     detayAc(id) {
       const b = bordrolar.find(x => x.id === id) || {};
-      document.getElementById('bordro-modal-baslik').textContent = `${b.personel_ad} — ${AYLAR[(b.ay||1)-1]} ${b.yil}`;
+      document.getElementById('bordro-modal-baslik').textContent = `${Ortak.kacir(b.personel_ad)} — ${AYLAR[(b.ay||1)-1]} ${b.yil}`;
       document.getElementById('bordro-modal-icerik').innerHTML = `
         <div class="detay-grid">
           <div class="detay-satir"><span>Baz Maaş</span><strong>${tl(b.baz_maas)}</strong></div>
@@ -330,7 +330,7 @@ const BordroModul = (() => {
           <div class="detay-satir" style="font-size:17px;font-weight:700"><span>Net Maaş</span><strong style="color:var(--primary)">${tl(b.net_maas)}</strong></div>
           <div class="detay-satir"><span>Çalışılan Gün</span><strong>${b.calisilan_gun}</strong></div>
           <div class="detay-satir"><span>Durum</span><span class="durum-badge" style="background:${DURUM_RENK[b.durum]}22;color:${DURUM_RENK[b.durum]}">${DURUM_ETIKET[b.durum]}</span></div>
-          ${b.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${b.notlar}</strong></div>` : ''}
+          ${b.notlar ? `<div class="detay-satir detay-tam"><span>Notlar</span><strong>${Ortak.kacir(b.notlar)}</strong></div>` : ''}
         </div>
         <div class="modal-footer"><button class="btn-iptal" onclick="BordroModul.modalKapat()">Kapat</button></div>
       `;

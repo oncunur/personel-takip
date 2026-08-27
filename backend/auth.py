@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -34,7 +35,9 @@ def sifre_hashle(sifre: str) -> str:
 def token_olustur(data: dict, sure: Optional[timedelta] = None) -> str:
     payload = data.copy()
     bitis = datetime.utcnow() + (sure or timedelta(minutes=TOKEN_SURESI_DAKIKA))
-    payload.update({"exp": bitis})
+    # jti: her token benzersiz olsun. Aynı saniyede yapılan iki giriş
+    # aynı içeriği üretiyordu; bir cihazdan çıkış diğerini de kapatıyordu.
+    payload.update({"exp": bitis, "jti": uuid.uuid4().hex})
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 

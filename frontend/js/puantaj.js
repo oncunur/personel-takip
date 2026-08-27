@@ -93,7 +93,7 @@ const PuantajModul = (() => {
     const saatBilgi = saat ? ` · ${saatMetni(saat)} saat` : '';
     const saatAralik = (h.giris_saati && h.cikis_saati) ? ` · ${h.giris_saati}-${h.cikis_saati}` : '';
     return `<td class="pt-hucre${g.hafta_sonu ? ' pt-hs' : ''}${saatGoster ? ' pt-saat-modu' : ''}" style="${stil}"
-      title="${satir.ad_soyad} · ${g.gun} ${AYLAR[secilenAy-1]} · ${baslik}${saatAralik}${saatBilgi}"
+      title="${Ortak.kacir(satir.ad_soyad)} · ${g.gun} ${AYLAR[secilenAy-1]} · ${baslik}${saatAralik}${saatBilgi}"
       data-pid="${satir.personel_id}" data-gun="${g.gun}" data-durum="${durum || ''}"
       >${hucreIcerik(durum, saat)}</td>`;
   }

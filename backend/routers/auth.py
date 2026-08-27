@@ -8,6 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import auth as auth_utils
+import guvenlik
 import models
 import schemas
 from database import get_db
@@ -17,6 +18,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/giris")
 
 
 def aktif_kullanici(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # Çıkış yapılmış bir token, süresi dolmamış olsa bile kabul edilmez
+    if guvenlik.token_iptal_mi(token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Oturum sonlandırılmış")
+
     payload = auth_utils.token_coz(token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz token")
@@ -60,12 +65,27 @@ def kullanici_personeli(db: Session, kullanici: models.Kullanici):
 
 @router.post("/giris", response_model=schemas.Token)
 def giris(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    anahtar = (form.username or "").lower()
+
+    kalan_kilit = guvenlik.kilitli_mi(anahtar)
+    if kalan_kilit:
+        dakika = max(1, kalan_kilit // 60)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Çok fazla hatalı deneme. {dakika} dakika sonra tekrar deneyin.",
+        )
+
     kullanici = auth_utils.kullanici_dogrula(db, form.username, form.password)
     if not kullanici:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Kullanıcı adı veya şifre hatalı"
-        )
+        kalan_hak = guvenlik.basarisiz_deneme(anahtar)
+        detay = "Kullanıcı adı veya şifre hatalı"
+        if kalan_hak == 0:
+            detay = "Çok fazla hatalı deneme. Hesap geçici olarak kilitlendi."
+        elif kalan_hak <= 2:
+            detay += f" ({kalan_hak} deneme hakkınız kaldı)"
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detay)
+
+    guvenlik.basarili_giris(anahtar)
     kullanici.son_giris = datetime.utcnow()
     db.commit()
     token = auth_utils.token_olustur({"sub": kullanici.kullanici_adi, "rol": kullanici.rol})
@@ -78,7 +98,12 @@ def ben(kullanici: models.Kullanici = Depends(aktif_kullanici)):
 
 
 @router.post("/cikis")
-def cikis():
+def cikis(token: str = Depends(oauth2_scheme)):
+    """Tokenı kara listeye alır; kopyalanmış oturum da geçersiz olur."""
+    payload = auth_utils.token_coz(token)
+    if payload:
+        # Kara listede yalnızca tokenın kendi ömrü kadar tutulur
+        guvenlik.token_iptal_et(token, float(payload.get("exp", 0)))
     return {"mesaj": "Çıkış başarılı"}
 
 

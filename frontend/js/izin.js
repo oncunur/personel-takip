@@ -87,8 +87,8 @@ const IzinModul = (() => {
     tbody.innerHTML = filtreli.map(t => `
       <tr>
         <td>
-          <div style="font-weight:600;color:var(--gray-900)">${t.personel_ad}</div>
-          <div style="font-size:12px;color:var(--gray-400)">${t.personel_departman||''}</div>
+          <div style="font-weight:600;color:var(--gray-900)">${Ortak.kacir(t.personel_ad)}</div>
+          <div style="font-size:12px;color:var(--gray-400)">${Ortak.kacir(t.personel_departman || '')}</div>
         </td>
         <td>${turBadge(t.tur)}</td>
         <td>
@@ -97,9 +97,9 @@ const IzinModul = (() => {
         </td>
         <td>${durumBadge(t.durum)}</td>
         <td style="font-size:13px;color:var(--gray-600);max-width:160px">
-          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.aciklama||'—'}</div>
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${Ortak.kacir(t.aciklama || '—')}</div>
         </td>
-        <td style="font-size:12px;color:var(--gray-500)">${t.onaylayan||'—'}</td>
+        <td style="font-size:12px;color:var(--gray-500)">${Ortak.kacir(t.onaylayan || '—')}</td>
         <td class="islem-td">
           ${t.durum==='beklemede' && yonetici ? `
             <button class="btn-onay" onclick="IzinModul.onayla(${t.id})" title="Onayla">✓</button>
@@ -193,7 +193,7 @@ const IzinModul = (() => {
 
   function personelOptions() {
     const list = personeller;
-    return list.map(p => `<option value="${p.id}">${p.ad} ${p.soyad}</option>`).join('');
+    return list.map(p => `<option value="${p.id}">${Ortak.kacir(p.ad)} ${Ortak.kacir(p.soyad)}</option>`).join('');
   }
 
   return {
