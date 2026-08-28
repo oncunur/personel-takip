@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from typing import Optional, List
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -266,6 +266,42 @@ def belge_uyarilari(
         "toplam": len(satirlar),
         "gecmis": sum(1 for x in satirlar if x["durum"] == "gecti"),
         "veriler": satirlar,
+    }
+
+
+@router.get("/ozet")
+def personel_ozeti(
+    db: Session = Depends(get_db),
+    _: models.Kullanici = Depends(yonetici_yetkisi),
+):
+    """Personel listesinin üstünde gösterilen sayılar.
+
+    Yaka dağılımı ve süresi geçmiş belge sayısı ayrı uçlardan
+    toplanıyordu; liste sayfası tek çağrıyla açılsın diye birleştirildi.
+    """
+    aktif = db.query(models.Personel).filter(
+        models.Personel.durum == models.PersonelDurum.aktif
+    ).all()
+    toplam = db.query(func.count(models.Personel.id)).scalar() or 0
+
+    gecmis = yaklasan = 0
+    for p in aktif:
+        for u in kimlik.belge_uyarilari(p):
+            if u["durum"] == "gecti":
+                gecmis += 1
+            else:
+                yaklasan += 1
+
+    return {
+        "toplam": toplam,
+        "aktif": len(aktif),
+        "pasif": toplam - len(aktif),
+        "beyaz_yaka": sum(1 for p in aktif if p.yaka == models.Yaka.beyaz),
+        "mavi_yaka": sum(1 for p in aktif if p.yaka == models.Yaka.mavi),
+        "yaka_girilmemis": sum(1 for p in aktif if p.yaka is None),
+        "yabanci": sum(1 for p in aktif if p.uyruk and p.uyruk != "TR"),
+        "belge_gecmis": gecmis,
+        "belge_yaklasan": yaklasan,
     }
 
 

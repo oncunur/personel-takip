@@ -121,7 +121,8 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
   const bugun = new Date();
   const yil = bugun.getFullYear(), ay = bugun.getMonth() + 1;
   const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  const saatMetni = v => (v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ','));
+  // Aylık toplam dört haneyi asiyor; binlik ayraci olmadan okunmuyordu
+  const saatMetni = v => Number(v).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
 
   // Puantaj cetveli yalnızca yöneticiye açık; personel rolünde 403
   // dönüp tüm panoyu düşürmesin diye ayrıca yakalanır.
@@ -193,6 +194,7 @@ async function anasayfaOzetYukle(kullanici, yonetici) {
         <div class="pano-mini-liste">
           <div><span>Konaklama</span><strong>${konak ? konak.dolu_yatak : 0}/${konak ? konak.toplam_kapasite : 0} yatak</strong></div>
           <div><span>Aylık kira</span><strong>${O.tl(konak ? konak.aylik_kira_toplam : 0)}</strong></div>
+          <div><span>Otel · günlük</span><strong>${O.tl(konak && konak.otel ? konak.otel.gunluk_maliyet : 0)}</strong></div>
           <div><span>Demirbaş</span><strong>${dmb ? dmb.toplam : 0} adet · ${dmb ? dmb.zimmetli : 0} zimmetli</strong></div>
           <div><span>Araç</span><strong>${arc ? arc.arac_sayisi : 0} adet · ${arc ? arc.atanan : 0} atanmış</strong></div>
           <div><span>Stok değeri</span><strong>${O.tl(stk ? stk.toplam_deger : 0)}</strong></div>

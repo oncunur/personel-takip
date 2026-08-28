@@ -36,7 +36,29 @@ const BordroModul = (() => {
     }
   }
 
+  // Donemin maas maliyeti listede toplu gorunmuyordu; satirlardan
+  // hesaplaniyor, ayri bir cagriya gerek yok.
+  function ozetRender(bordrolar) {
+    const kutu = document.getElementById('bordro-ozet');
+    if (!kutu) return;
+    const topla = (f, kosul = () => true) =>
+      bordrolar.filter(kosul).reduce((t, b) => t + Number(b[f] || 0), 0);
+    const taslak = bordrolar.filter(b => b.durum === 'taslak').length;
+    const odenen = bordrolar.filter(b => b.durum === 'odendi').length;
+    const kesinti = topla('brut_maas') - topla('net_maas');
+
+    kutu.innerHTML = Ortak.statGrid([
+      { label: 'Bordro', deger: bordrolar.length,
+        alt: `${taslak} taslak · ${odenen} ödendi`,
+        renk: taslak ? '#855900' : '#00802F' },
+      { label: 'Brüt Toplam', deger: tl(topla('brut_maas')), alt: 'işveren yükü' },
+      { label: 'Kesintiler', deger: tl(kesinti), alt: 'SGK, vergi, damga', renk: '#DB0000' },
+      { label: 'Net Ödenecek', deger: tl(topla('net_maas')), alt: 'personele geçen', renk: '#00802F' },
+    ]);
+  }
+
   function listeRender(bordrolar) {
+    ozetRender(bordrolar);
     const tbody = document.getElementById('bordro-tbody');
     if (!bordrolar.length) {
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Bordro bulunamadı</td></tr>`;
@@ -160,6 +182,8 @@ const BordroModul = (() => {
 
       const bugun = new Date();
       document.getElementById('content-area').innerHTML = `
+        <div id="bordro-ozet"></div>
+
         <div class="personel-toolbar">
           <div class="arama-grup">
             <select id="br-filtre-ay" class="filtre-select">

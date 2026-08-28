@@ -86,8 +86,8 @@ const Ortak = (() => {
   // tam sayıysa ondalık gösterilmiyor.
   function gun(n) {
     if (n === null || n === undefined || n === '') return '—';
-    const s = Number(n);
-    return (Number.isInteger(s) ? s : s.toFixed(1).replace('.', ',')) + ' gün';
+    // Toplamlar dört haneyi asabiliyor; binlik ayraci olmadan okunmuyordu
+    return Number(n).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' gün';
   }
 
   function statGrid(kartlar) {

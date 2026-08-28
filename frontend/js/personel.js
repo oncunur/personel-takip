@@ -6,6 +6,8 @@ const PersonelModul = (() => {
   // Kaçış + boş değer kısayolu: kullanıcı verisi doğrudan HTML'e girmesin
   const K = v => (v === null || v === undefined || v === '') ? '—' : Ortak.kacir(v);
   let mevcutSayfa = 1;
+  const SAYFA_BOYU = 20;
+  let ozet = null;
   let aramaTxt = '';
   let filtreDepartman = '';
   let filtreDurum = '';
@@ -54,16 +56,58 @@ const PersonelModul = (() => {
   }
 
   async function listeyiYukle() {
-    const params = new URLSearchParams({ sayfa: mevcutSayfa, limit: 20 });
+    const params = new URLSearchParams({ sayfa: mevcutSayfa, limit: SAYFA_BOYU });
     if (aramaTxt) params.set('arama', aramaTxt);
     if (filtreDepartman) params.set('departman_id', filtreDepartman);
     if (filtreDurum) params.set('durum', filtreDurum);
     if (filtreYaka) params.set('yaka', filtreYaka);
 
+    if (!ozet) { ozet = await apiFetch('/personel/ozet').catch(() => null); ozetRender(); }
     const data = await apiFetch(`/personel?${params}`);
     const liste = data.veriler;
     const toplam = data.toplam;
     listeRender(liste, toplam);
+  }
+
+  // API sayfali veri donuyordu ama arayuzde gecis yoktu: ilk 20 kayittan
+  // sonrasina listeden ulasilamiyordu.
+  // Sureli belgeler yaptirim dogurdugu icin uyari listenin ustunde durur.
+  function ozetRender() {
+    const kutu = document.getElementById('personel-ozet');
+    if (!kutu || !ozet) return;
+    const yaka = `${ozet.beyaz_yaka} beyaz · ${ozet.mavi_yaka} mavi` +
+      (ozet.yaka_girilmemis ? ` · ${ozet.yaka_girilmemis} girilmemiş` : '');
+    kutu.innerHTML = Ortak.statGrid([
+      { label: 'Personel', deger: ozet.aktif,
+        alt: ozet.pasif ? `${ozet.pasif} pasif · ${ozet.toplam} toplam` : 'tamamı aktif' },
+      { label: 'Yaka Dağılımı', deger: ozet.beyaz_yaka + ozet.mavi_yaka, alt: yaka,
+        renk: ozet.yaka_girilmemis ? '#855900' : '#006CE0' },
+      { label: 'Yabancı Uyruklu', deger: ozet.yabanci, alt: 'çalışma izni gerekir', renk: '#006CE0' },
+      { label: 'Belge Uyarısı', deger: ozet.belge_gecmis + ozet.belge_yaklasan,
+        alt: ozet.belge_gecmis ? `${ozet.belge_gecmis} süresi GEÇMİŞ · ${ozet.belge_yaklasan} yaklaşan`
+                               : `${ozet.belge_yaklasan} yaklaşan`,
+        renk: ozet.belge_gecmis ? '#DB0000' : (ozet.belge_yaklasan ? '#855900' : '#00802F') },
+    ]);
+  }
+
+  function sayfalamaRender(toplam, gosterilen) {
+    const kutu = document.getElementById('personel-sayfalama');
+    if (!kutu) return;
+    const sonSayfa = Math.max(Math.ceil(toplam / SAYFA_BOYU), 1);
+    if (sonSayfa <= 1) { kutu.classList.add('gizli'); return; }
+
+    const ilk = (mevcutSayfa - 1) * SAYFA_BOYU + 1;
+    const son = ilk + gosterilen - 1;
+    kutu.classList.remove('gizli');
+    kutu.innerHTML = `
+      <span class="sayfalama-bilgi">${ilk}–${son} / ${toplam}</span>
+      <div class="sayfalama-dugmeler">
+        <button class="btn-mini" ${mevcutSayfa <= 1 ? 'disabled' : ''}
+          onclick="PersonelModul.sayfaGit(${mevcutSayfa - 1})">Önceki</button>
+        <span class="sayfalama-no">Sayfa ${mevcutSayfa} / ${sonSayfa}</span>
+        <button class="btn-mini" ${mevcutSayfa >= sonSayfa ? 'disabled' : ''}
+          onclick="PersonelModul.sayfaGit(${mevcutSayfa + 1})">Sonraki</button>
+      </div>`;
   }
 
   function listeRender(liste, toplam) {
@@ -72,9 +116,11 @@ const PersonelModul = (() => {
     if (!liste.length) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400)">Personel bulunamadı</td></tr>`;
       document.getElementById('personel-toplam').textContent = '0 personel';
+      sayfalamaRender(0, 0);
       return;
     }
     document.getElementById('personel-toplam').textContent = `${toplam} personel`;
+    sayfalamaRender(toplam, liste.length);
     tbody.innerHTML = liste.map(p => `
       <tr class="personel-satir" data-id="${p.id}">
         <td>
@@ -120,6 +166,8 @@ const PersonelModul = (() => {
     const yonetici = kullanici && ['admin','yonetici'].includes(kullanici.rol);
 
     document.getElementById('content-area').innerHTML = `
+      <div id="personel-ozet"></div>
+
       <div class="personel-toolbar">
         <div class="arama-grup">
           <div class="arama-input-wrap">
@@ -163,6 +211,8 @@ const PersonelModul = (() => {
           </tbody>
         </table>
       </div>
+
+      <div id="personel-sayfalama" class="sayfalama gizli"></div>
 
       <!-- Modal -->
       <div id="personel-modal" class="modal-overlay gizli">
@@ -353,6 +403,12 @@ const PersonelModul = (() => {
   }
 
   return {
+    sayfaGit(no) {
+      mevcutSayfa = no;
+      listeyiYukle();
+      document.getElementById('content-area').scrollIntoView({ block: 'start' });
+    },
+
     async yukle() {
       await departmanlariYukle();
       if (!ulkeler.length) ulkeler = await apiFetch('/personel/ulkeler') || [];
@@ -372,6 +428,7 @@ const PersonelModul = (() => {
         try {
           await apiFetch('/personel', { method:'POST', body: JSON.stringify(veri) });
           this.modalKapat();
+          ozet = null;   // sayılar yeniden çekilsin
           listeyiYukle();
         } catch(err) {
           hata.textContent = err.message;
@@ -394,6 +451,7 @@ const PersonelModul = (() => {
         try {
           await apiFetch(`/personel/${id}`, { method:'PUT', body: JSON.stringify(veri) });
           this.modalKapat();
+          ozet = null;   // sayılar yeniden çekilsin
           listeyiYukle();
         } catch(err) {
           hata.textContent = err.message;
@@ -449,7 +507,8 @@ const PersonelModul = (() => {
       if (!confirm(`"${ad}" adlı personeli pasife almak istediğinizden emin misiniz?`)) return;
       try {
         await apiFetch(`/personel/${id}`, { method:'DELETE' });
-        listeyiYukle();
+        ozet = null;   // sayılar yeniden çekilsin
+          listeyiYukle();
       } catch(err) { alert(err.message); }
     },
 

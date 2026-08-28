@@ -1331,3 +1331,27 @@ html, body {
 /* Otel gecelik fiyatı vergi hariç girilir; başlıkta ve formda belirtilir */
 .baslik-not { font-weight: 400; color: var(--text-3); font-size: 11px; }
 .form-not { font-weight: 400; color: var(--text-3); font-size: 12px; }
+
+/* Sayfalama şeridi */
+.sayfalama {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-m);
+  flex-wrap: wrap;
+  padding: var(--sp-s) var(--sp-m);
+  margin-top: var(--sp-s);
+  font-size: 13px;
+  color: var(--text-3);
+}
+.sayfalama-dugmeler { display: flex; align-items: center; gap: var(--sp-s); }
+.sayfalama-no { font-variant-numeric: tabular-nums; }
+.sayfalama button[disabled] { opacity: .4; cursor: default; }
+
+/* Dar ekranda dört KPI tek satıra sığmayıp 3+1 diziliyordu; 2x2 daha
+   dengeli duruyor. Ayraç çizgisi ikinci satırın başında yanlış yere
+   düştüğü için bu genişlikte kaldırılıyor. */
+@media (max-width: 900px) {
+  .pano-kpi-satir { grid-template-columns: 1fr 1fr; gap: var(--sp-m) var(--sp-l); }
+  .pano-kpi { padding-left: 0; border-left: none; }
+}

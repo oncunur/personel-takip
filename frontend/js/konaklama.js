@@ -651,7 +651,8 @@ const KonaklamaModul = (() => {
           <div class="fatura-ozet">
             <div><span>Otel</span><strong>${O.kacir(k.konut_ad)}${k.oda_no ? ' · Oda ' + O.kacir(k.oda_no) : ''}</strong></div>
             <div><span>Konaklama</span><strong>${O.tarih(k.giris_tarihi)} – ${k.cikis_tarihi ? O.tarih(k.cikis_tarihi) : 'devam ediyor'}</strong></div>
-            <div><span>Gece</span><strong>${k.gece_sayisi} gece × ${O.tl(k.gecelik_ucret)}</strong></div>
+            <div><span>Gece</span><strong>${k.gece_sayisi} gece × ${O.tl(k.gecelik_ucret)}</strong>
+              <span class="hucre-alt">vergi hariç · +%10 KDV, +%1 konaklama vergisi</span></div>
             <div><span>Tahmini tutar</span><strong style="color:var(--primary)">${O.tl(k.tahmini_tutar)}</strong></div>
           </div>
           <div class="form-grid-2">
